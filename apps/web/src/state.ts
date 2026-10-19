@@ -128,8 +128,11 @@ export const runtime = {
   /** world time of day [0,1) — recomputed by 3D each frame via worldTimeOfDay(Date.now()+serverOffsetMs) */
   /** auto-walk path set by "navigate" actions; the controller follows it until reached or the player takes manual control */
   navPath: null as null | { points: Point[]; label: string; locationId: string },
-  /** pending camera yaw nudge etc. reserved */
   localMoveSeq: 0,
+  /** UI (emote bar) sets this; the 3D controller consumes it, plays the animation locally and calls gameClient.sendEmote */
+  emoteRequest: null as Anim | null,
+  /** camera yaw in radians, written by the 3D camera rig (used to rotate the minimap) */
+  cameraYaw: 0,
 };
 
 /**
