@@ -384,6 +384,10 @@ kbd {
 .loading-overlay--solid {
   background: radial-gradient(1100px 650px at 50% 35%, #1b2a55 0%, #0b1020 70%);
 }
+.loading-overlay--scene {
+  position: absolute;
+  z-index: 1;
+}
 .loading-card {
   display: grid;
   justify-items: center;

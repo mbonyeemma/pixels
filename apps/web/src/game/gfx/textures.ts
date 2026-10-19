@@ -309,7 +309,7 @@ function beam(): HTMLCanvasElement {
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const u = Math.abs(x / (W - 1) - 0.5) * 2;
-      const v = y / (H - 1); // 0 top .. 1 bottom
+      const v = 1 - y / (H - 1); // 0 at the foot of the beam .. 1 at the top
       const a = Math.pow(1 - Math.min(1, v), 1.2) * 0.55 + 0.1;
       const edge = 1 - u * u;
       const i = (y * W + x) * 4;

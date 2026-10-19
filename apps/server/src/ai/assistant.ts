@@ -15,6 +15,8 @@ import { TOOL_DEFINITIONS, ToolRunner, derivePlan, deriveInterpretation, type To
 export const MAX_TOOL_ROUNDS = 4;
 export const MAX_CALLS_PER_ROUND = 8;
 export const MAX_REPLY_CHARS = 600;
+/** model output beyond this is ignored before any processing (bounds regex work on hostile text) */
+const MAX_MODEL_TEXT_CHARS = 4000;
 const DEFAULT_MODEL = 'claude-sonnet-4-5';
 
 /** Test seams. Production code only passes `fetch` (through createAssistant). */
@@ -183,7 +185,8 @@ export class AssistantCore implements Assistant {
 
   private async withDeadline<T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.cfg.timeoutMs * 2);
+    // timeoutMs bounds the whole model conversation (every round), so the HTTP layer's own hard timeout can stay above it
+    const timer = setTimeout(() => controller.abort(), this.cfg.timeoutMs);
     try {
       return await run(controller.signal);
     } finally {
@@ -206,7 +209,7 @@ export class AssistantCore implements Assistant {
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
       const allowTools = round < MAX_TOOL_ROUNDS;
       const completion = await provider.complete({ system, messages, tools: TOOL_DEFINITIONS, signal, allowTools, seed });
-      last = { text: completion.text ?? '', toolCalls: Array.isArray(completion.toolCalls) ? completion.toolCalls : [], interpretation: completion.interpretation, plan: completion.plan };
+      last = { text: completion.text ?? '', toolCalls: Array.isArray(completion.toolCalls) ? completion.toolCalls.filter((c) => c && typeof c === 'object') : [], interpretation: completion.interpretation, plan: completion.plan };
       if (!last.toolCalls.length || !allowTools) break;
       const requested = last.toolCalls;
       messages.push({ role: 'assistant', text: last.text, toolCalls: requested });
@@ -225,7 +228,7 @@ export class AssistantCore implements Assistant {
     const { runner } = conv;
     const actions = dedupeActions(runner.actions);
     const facts: TurnFacts = runner.facts;
-    const parsed = splitInterpretation(conv.text);
+    const parsed = splitInterpretation(conv.text.slice(0, MAX_MODEL_TEXT_CHARS));
     const key = this.cfg.apiKey;
 
     const fromModel = !providerLabel.startsWith('rules');

@@ -11,6 +11,7 @@
 
 /* The HUD never blocks the canvas (camera drag); only real panels take pointer events. */
 .hud {
+  --mm-size: 184px;
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -59,7 +60,7 @@
 .hud-right {
   top: 66px;
   right: 12px;
-  bottom: 236px;
+  bottom: calc(var(--mm-size) + 52px);
   width: 360px;
   display: flex;
   flex-direction: column;
@@ -288,11 +289,12 @@
   display: grid;
   justify-items: center;
   gap: 6px;
+  margin-top: 10px;
   pointer-events: none;
 }
 .toast {
   position: relative;
-  max-width: 480px;
+  max-width: 440px;
   padding: 9px 16px;
   border: 1px solid var(--glass-border);
   border-radius: 12px;
@@ -660,12 +662,12 @@
   display: grid;
   justify-items: center;
   gap: 4px;
-  width: 184px;
+  width: var(--mm-size);
 }
 .minimap-frame {
   position: relative;
-  width: 184px;
-  height: 184px;
+  width: var(--mm-size);
+  height: var(--mm-size);
   border-radius: 50%;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
 }
@@ -767,6 +769,7 @@
 
 /* AI panel */
 .ai-list {
+  position: relative;
   flex: 1;
   min-height: 90px;
   display: grid;
@@ -866,12 +869,13 @@
 .chips {
   display: flex;
   gap: 6px;
-  max-height: 64px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  flex-wrap: nowrap;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+}
+.ai-quick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 .chip-btn {
   flex: none;
@@ -924,7 +928,6 @@
   }
 }
 .ai-voice-msg {
-  min-height: 16px;
   line-height: 1.3;
 }
 
@@ -1143,6 +1146,18 @@
   font-size: 12px;
 }
 
+.shop-away {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  border-radius: 11px;
+  background: rgba(251, 191, 36, 0.12);
+  color: #fde68a;
+}
 .shop-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -1236,9 +1251,9 @@
 }
 
 /* shorter laptop screens: tighten */
-@media (max-height: 760px) {
-  .hud-right {
-    bottom: 230px;
+@media (max-height: 779px) {
+  .hud {
+    --mm-size: 152px;
   }
   .chat-lines {
     max-height: 120px;

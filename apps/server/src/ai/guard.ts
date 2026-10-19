@@ -32,10 +32,13 @@ export function extractCoinAmounts(text: string): number[] {
   const out: number[] = [];
   for (const m of text.matchAll(COIN_AMOUNT_RE)) out.push(toNumber(m[1], m[2]));
   for (const m of text.matchAll(COST_AMOUNT_RE)) out.push(toNumber(m[1], undefined));
-  return out;
+  return [...new Set(out)];
 }
 
 const shortName = (name: string) => norm(name.replace(/\([^)]*\)/g, ' '));
+
+const REWARD_WORDS = /\b(?:rewards?|earn(?:s|ed|ing)?|missions?|quests?|hunts?|deliver(?:y|ies)?|visit|pays?|payouts?|bonus|prizes?|wins?|receive)\b/i;
+const BALANCE_WORDS = /\b(?:you|your|youre|balance|have|has|own|owns|left|afford|enough|short|need|needs|more|wallet|got)\b/i;
 
 function allowedFor(sentence: string, facts: TurnFacts): Set<number> {
   const n = norm(sentence);
@@ -43,10 +46,14 @@ function allowedFor(sentence: string, facts: TurnFacts): Set<number> {
     const sn = shortName(it.name);
     return (sn && n.includes(sn)) || n.includes(id.replace(/_/g, ' '));
   });
-  const allowed = new Set<number>(facts.rewardCoins);
+  const allowed = new Set<number>();
+  // a sentence about specific items may only quote those prices, plus the balance / rewards when it talks about them
   const pool = mentioned.length ? mentioned.map(([, v]) => v.price) : [...facts.items.values()].map((v) => v.price);
   for (const p of pool) allowed.add(p);
-  if (facts.balance !== null) {
+  const useRewards = !mentioned.length || REWARD_WORDS.test(sentence);
+  const useBalance = !mentioned.length || BALANCE_WORDS.test(sentence);
+  if (useRewards) for (const r of facts.rewardCoins) allowed.add(r);
+  if (facts.balance !== null && useBalance) {
     allowed.add(facts.balance);
     // "you need N more coins" is derived from tool data, so it is allowed too
     for (const p of pool) if (p > facts.balance) allowed.add(p - facts.balance);
@@ -75,8 +82,8 @@ const FALSE_CLAIM_RES: RegExp[] = [
   /\bi\s*(?:'ve|’ve|have)?\s*(?:just\s+|now\s+)?(?:gave|given|granted|sent|added|deposited)\s+(?:you\s+)?(?:\d|some|extra|free|a\s+few)/i,
   /\byou\s*(?:'ve|’ve|have)\s+(?:just\s+)?(?:bought|purchased|been\s+(?:given|credited|charged|refunded))\b/i,
   /\b(?:has|have|was|were)\s+been\s+(?:purchased|bought|signed|minted|transferred|credited|added\s+to\s+your\s+(?:inventory|account|wallet))\b/i,
-  /\b(?:purchase|payment|transaction)\s+(?:complete|completed|successful|confirmed|signed|sent|approved)\b/i,
-  /\b(?:i|we)\s+(?:can|will|'ll|ll)\s+(?:sign|buy\s+it\s+for\s+you|spend\s+your|charge\s+you|send\s+(?:you\s+)?(?:coins|funds))\b/i,
+  /\b(?:purchase|payment|transaction)\s+(?:(?:is|was|has\s+been)\s+)?(?:complete|completed|successful|confirmed|signed|sent|approved)\b/i,
+  /\b(?:i|we)(?:\s+(?:can|will)|'ll|’ll)\s+(?:sign|buy\s+it\s+for\s+you|spend\s+your|charge\s+you|send\s+(?:you\s+)?(?:coins|funds))\b/i,
 ];
 export function claimsForbiddenAction(text: string): boolean {
   return FALSE_CLAIM_RES.some((re) => re.test(text));

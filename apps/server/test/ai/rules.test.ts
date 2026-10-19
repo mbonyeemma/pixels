@@ -269,8 +269,12 @@ describe('rules provider: missions', () => {
     const r = await ask('Give me a treasure hunt that takes five minutes');
     const offer = actionOf(r, 'mission_offer')!.offer;
     expect(offer.type).toBe('treasure_hunt');
-    expect(offer.estimatedMinutes).toBe(5);
     const p = proposalOf(api);
+    expect(p.estimatedMinutes).toBe(5);
+    expect(p.objectiveLocationIds).toHaveLength(4);
+    // the game derives the real length from the walking distance; the reply must be honest about it
+    expect(r.reply).toContain(`about ${offer.estimatedMinutes} min`);
+    if (offer.estimatedMinutes !== 5) expect(r.reply).toMatch(/can differ from the 5 min you asked for/);
     expect(p.objectiveLocationIds.length).toBeGreaterThanOrEqual(2);
     expect(p.objectiveLocationIds.length).toBeLessThanOrEqual(4);
     for (const id of p.objectiveLocationIds) expect(TREASURE_SPOT_IDS).toContain(id);
@@ -348,6 +352,23 @@ describe('rules provider: missions', () => {
     expect(actionOf(r, 'mission_offer')).toBeDefined();
   });
 
+  it('uses nearer places after a "too far" rejection from the real engine', async () => {
+    const { ask, api } = setup({ x: 50, z: 52, rejectNext: ['That is too far (420 m). Missions can cover at most 400 m of walking.'] });
+    const r = await ask('give me a treasure hunt');
+    expect(api.proposals).toHaveLength(2);
+    const [a, b] = api.proposals as MissionProposalInput[];
+    expect(b.type).toBe('treasure_hunt');
+    expect(b.objectiveLocationIds.length).toBeLessThanOrEqual(a.objectiveLocationIds.length);
+    expect(actionOf(r, 'mission_offer')).toBeDefined();
+  });
+
+  it('retries a real cooldown rejection with a different mission type', async () => {
+    const { ask, api } = setup({ cooldownTypes: ['delivery'] });
+    const r = await ask('give me a delivery');
+    expect(api.proposals).toHaveLength(2);
+    expect(actionOf(r, 'mission_offer')!.offer.type).not.toBe('delivery');
+  });
+
   it('explains why when the adapted proposal fails too', async () => {
     const { ask, api } = setup({ rejectNext: ['First rejection: too short.', 'Second rejection: still too short.'] });
     const r = await ask('give me a delivery');
@@ -361,7 +382,7 @@ describe('rules provider: missions', () => {
     const { ask, api } = setup({ dailyCapReached: true });
     const r = await ask('I want to earn some coins');
     expect(api.proposals).toHaveLength(1);
-    expect(r.reply).toContain('daily reward limit');
+    expect(r.reply).toContain('daily mission reward limit');
     expect(actionOf(r, 'mission_offer')).toBeUndefined();
   });
 
@@ -379,6 +400,58 @@ describe('rules provider: missions', () => {
     expect(r.reply).toMatch(/treasure hunt/);
     expect(r.reply).toMatch(/delivery/);
     expect(r.actions).toEqual([]);
+  });
+});
+
+describe('rules provider: everyday phrasing', () => {
+  it.each([
+    ["I'm hungry", 'bakery'],
+    ['where do I find food', 'bakery'],
+    ['where can I get a snack', 'bakery'],
+  ])('%s points at %s', async (message, id) => {
+    const { ask } = setup();
+    const r = await ask(message);
+    expect(r.reply).toContain(locationById(id)!.name);
+  });
+
+  it('beginners get a visit mission, not a location answer', async () => {
+    const { ask, api } = setup();
+    for (const msg of ["I'm new, where do I start?", 'tutorial']) {
+      const r = await ask(msg);
+      expect(actionOf(r, 'mission_offer')?.offer.type, msg).toBe('visit_location');
+    }
+    expect(api.proposals).toHaveLength(2);
+  });
+
+  it('"a mission to the arcade" becomes a visit mission to that place', async () => {
+    const { ask, api } = setup();
+    await ask('give me a mission to the arcade');
+    expect(proposalOf(api)).toMatchObject({ type: 'visit_location', objectiveLocationIds: ['arcade'] });
+  });
+
+  it('"quick" and "long" tune the length of a treasure hunt', async () => {
+    const quick = setup({ x: 5, z: -40 });
+    await quick.ask('quick treasure hunt');
+    expect(proposalOf(quick.api).objectiveLocationIds).toHaveLength(2);
+    const long = setup({ x: 5, z: -40 });
+    await long.ask('a 6 minute treasure hunt');
+    expect(proposalOf(long.api).objectiveLocationIds).toHaveLength(4);
+  });
+
+  it('spending questions go to the shop, not to the balance readout', async () => {
+    const { ask } = setup();
+    for (const msg of ['what can I get with my coins', 'I wanna spend my coins', "what's in the shop"]) {
+      const r = await ask(msg);
+      expect(actionOf(r, 'show_items'), msg).toBeDefined();
+    }
+  });
+
+  it('says you are welcome, and still treats "ok" as yes after an offer to walk', async () => {
+    const { ask } = setup();
+    expect((await ask('thanks!')).reply).toMatch(/welcome/i);
+    await ask('where is the arcade');
+    const r = await ask('ok');
+    expect(actionOf(r, 'navigate')?.locationId).toBe('arcade');
   });
 });
 

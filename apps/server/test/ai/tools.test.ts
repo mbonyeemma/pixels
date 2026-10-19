@@ -168,7 +168,7 @@ describe('ToolRunner validation', () => {
     const runner = new ToolRunner(api);
     const o = runner.run('propose_mission', validMission);
     expect(o.ok).toBe(false);
-    expect(o.content).toContain('cooldown');
+    expect(o.content).toContain('wait 30 seconds');
     api.getPlayerContext = () => {
       throw new Error('db exploded with secret=hunter2');
     };

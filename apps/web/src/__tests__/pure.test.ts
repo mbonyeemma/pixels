@@ -6,7 +6,7 @@ import { hashHue, sanitizeChat, sanitizeName } from '../net/sanitize';
 import { apiUrl, wsUrl } from '../net/urls';
 import { ClockSync } from '../net/clocksync';
 import { httpErrorText } from '../net/http';
-import { formatClock, dayPhase, formatCountdown, splitDisplayName, mockSuffix } from '../ui/format';
+import { formatClock, dayPhase, formatCountdown, splitDisplayName, mockSuffix, missionDots } from '../ui/format';
 import { clampToCircle, viewToWorld, worldToView } from '../ui/minimapRender';
 
 describe('reconnectDelay', () => {
@@ -155,6 +155,18 @@ describe('ui format helpers', () => {
     expect(splitDisplayName('plain')).toEqual({ name: 'plain', tag: '' });
     expect(mockSuffix('40 coins')).toBe('40 coins (mock)');
     expect(mockSuffix('40 coins (mock in-game reward)')).toBe('40 coins (mock in-game reward)');
+  });
+});
+
+describe('missionDots', () => {
+  it('uses the listed objectives for visit and delivery missions', () => {
+    const m = { type: 'delivery', current: 1, objectives: [{ label: 'Pick up', done: true }, { label: 'Deliver', done: false }] };
+    expect(missionDots(m)).toEqual({ dots: ['done', 'current'], step: 2, total: 2 });
+    expect(missionDots({ type: 'visit_location', current: 0, objectives: [{ label: 'Visit', done: false }] })).toEqual({ dots: ['current'], step: 1, total: 1 });
+  });
+  it('reads the total of a treasure hunt from the revealed label', () => {
+    const m = { type: 'treasure_hunt', current: 1, objectives: [{ label: 'Find treasure spot 1 of 3', done: true }, { label: 'Find treasure spot 2 of 3', done: false }] };
+    expect(missionDots(m)).toEqual({ dots: ['done', 'current', 'todo'], step: 2, total: 3 });
   });
 });
 

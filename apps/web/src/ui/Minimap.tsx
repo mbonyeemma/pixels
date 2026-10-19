@@ -8,7 +8,8 @@ import { nameColor } from './format';
 import { IconMinus, IconPlus } from './icons';
 import { WORLD_BOUNDS } from '@pixels/shared';
 
-const SIZE = 184; // CSS px
+/** CSS px; keep in sync with --mm-size in hud.css (smaller on short screens) */
+const sizeFor = (): number => (typeof window !== 'undefined' && window.matchMedia?.('(max-height: 779px)').matches ? 152 : 184);
 const FPS_MS = 1000 / 15;
 const ZOOMS = [28, 45, 75]; // visible radius in metres
 const PIN_COLOR: Record<GameLocation['kind'], string> = { shop: '#fbbf24', building: '#f1f5f9', landmark: '#93c5fd', park: '#86efac' };
@@ -30,8 +31,17 @@ export default function Minimap() {
     return Number.isInteger(z) && z >= 0 && z < ZOOMS.length ? z : 1;
   });
   const [hover, setHover] = useState<string | null>(null);
+  const [SIZE, setSize] = useState(sizeFor);
   const viewRef = useRef({ northUp, zoom });
   viewRef.current = { northUp, zoom };
+
+  useEffect(() => {
+    const mq = window.matchMedia?.('(max-height: 779px)');
+    if (!mq) return;
+    const on = () => setSize(sizeFor());
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -194,7 +204,7 @@ export default function Minimap() {
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [SIZE]);
 
   const pinAt = (e: { clientX: number; clientY: number }): PinHit | null => {
     const rect = canvasRef.current?.getBoundingClientRect();

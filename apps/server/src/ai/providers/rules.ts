@@ -66,6 +66,7 @@ const sentence = (s: string) => {
   const t = cleanInline(s, 240).trim();
   return !t ? '' : /[.!?]$/.test(t) ? t : t + '.';
 };
+const firstSentence = (s: string, max: number) => cleanInline(s.split(/(?<=[.!?])\s/)[0] ?? s, max).replace(/[.!?]+$/, '');
 const metres = (n: number) => `${Math.round(n)} m`;
 const names = (xs: string[]) => (xs.length <= 1 ? (xs[0] ?? '') : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]);
 const typeLabel = (t: string) => (t === 'treasure_hunt' ? 'treasure hunt' : t === 'visit_location' ? 'visit mission' : t === 'delivery' ? 'delivery' : t.replace(/_/g, ' '));
@@ -78,7 +79,8 @@ const hash = (s: string) => {
 const FAR_ERR = /far|reach|near|distance|closer|range|walk|away/i;
 const FATAL_MISSION_ERR = /daily|cap|already|active|in progress|one mission|limit/i;
 const COOLDOWN_ERR = /cooldown|wait|too soon|recently|again in|try again/i;
-const DISTANCE_ERR = /short|close|distance|min(?:imum)?|too near|far/i;
+const TOO_FAR_ERR = /too far|at most|cover at most|cannot be reached/i;
+const TOO_CLOSE_ERR = /too close|too short|too near|at least|minimum/i;
 
 export class RulesProvider implements AiProvider {
   readonly name = 'rules';
@@ -104,6 +106,8 @@ export class RulesProvider implements AiProvider {
   private respond(intent: Intent, v: View, seed: number): ProviderCompletion {
     const first = v.rounds.length === 0;
     switch (intent.kind) {
+      case 'thanks':
+        return say("You're welcome! Anything else? " + CAPABILITIES, { interpretation: 'You are saying thanks.', plan: ['Say you are welcome'] });
       case 'help':
         return say(intent.greeting ? "Hi! I'm Pixel Guide. " + CAPABILITIES : "I'm Pixel Guide. " + CAPABILITIES, { interpretation: 'You want to know what I can do.', plan: ['Explain what I can do'] });
       case 'fallback':
@@ -154,7 +158,7 @@ export class RulesProvider implements AiProvider {
       );
     }
     if (first) {
-      return calls(v, [['find_location', { query: intent.query }], intent.kind === 'navigate' ? ['navigate_to', { locationId: hit.id }] : ['get_player_context', {}]]);
+      return calls(v, [['find_location', { query: intent.query.slice(0, 80) }], intent.kind === 'navigate' ? ['navigate_to', { locationId: hit.id }] : ['get_player_context', {}]]);
     }
     if (intent.kind === 'navigate') {
       const nav = okOf(v.data, 'navigate_to');
@@ -295,7 +299,7 @@ export class RulesProvider implements AiProvider {
   private questsReply(v: View): ProviderCompletion {
     const quests = okOf(v.data, 'list_available_quests')?.quests ?? [];
     const text = quests.length
-      ? `Missions I can offer: ${quests.map((q) => `${typeLabel(q.type)} (${cleanInline(q.description, 90)})`).join('; ')}. Ask for one, like "give me a treasure hunt".`
+      ? `Missions I can offer: ${quests.map((q) => `${typeLabel(q.type)} (${firstSentence(q.description, 110)})`).join('; ')}. Ask for one, like "give me a treasure hunt".`
       : 'No mission types are available right now. Try again in a bit.';
     return say(text, { interpretation: 'You want to know which missions exist.', plan: ['List the mission types'] });
   }
@@ -356,8 +360,10 @@ export class RulesProvider implements AiProvider {
           ? `Here's your ${typeLabel(o.type)}:`
           : { bored: "Here's something fun:", earn: "Here's a good way to earn coins:", beginner: 'A great first mission:', generic: 'How about this:' }[intent.theme];
       const adapted = attempts.length > 1 ? ' (my first idea was not allowed, so I adjusted it)' : '';
+      const lengthNote =
+        intent.minutes && Math.abs(o.estimatedMinutes - intent.minutes) >= 1 ? ` The game sets the length from the walking distance, so it can differ from the ${intent.minutes} min you asked for.` : '';
       return say(
-        `${intro} "${cleanInline(o.title, 60)}"${adapted}, about ${o.estimatedMinutes} min. Reward: ${cleanInline(o.reward.label, 120)}. Accept the offer card to start, or ask me for something different.`,
+        `${intro} "${cleanInline(o.title, 60)}"${adapted}, about ${o.estimatedMinutes} min. Reward: ${cleanInline(o.reward.label, 120)}.${lengthNote} Accept the offer card to start, or ask me for something different.`,
         { interpretation, plan: attempts.length > 1 ? [...plan.slice(0, 2), 'First idea was rejected, adjusted it once', plan[2]] : plan },
       );
     }
@@ -367,8 +373,8 @@ export class RulesProvider implements AiProvider {
     if (attempts.length < 2 && !FATAL_MISSION_ERR.test(err)) {
       const avoid = [prev.startLocationId, ...(prev.objectiveLocationIds ?? [])].filter((x): x is string => typeof x === 'string');
       const sameTypeOk = !COOLDOWN_ERR.test(err) && prev.type;
-      const tries: { type: MissionType; opts: { avoid?: string[]; far?: boolean } }[] = [];
-      if (sameTypeOk && prev.type) tries.push({ type: prev.type, opts: { avoid, far: DISTANCE_ERR.test(err) } });
+      const tries: { type: MissionType; opts: { avoid?: string[]; far?: boolean; near?: boolean } }[] = [];
+      if (sameTypeOk && prev.type) tries.push({ type: prev.type, opts: { avoid, far: TOO_CLOSE_ERR.test(err), near: TOO_FAR_ERR.test(err) } });
       for (const t of order) if (t !== prev.type) tries.push({ type: t, opts: {} });
       for (const t of tries) {
         const proposal = buildProposal(t.type, wish, env, t.opts);

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { shopItems, type ShopItem } from '@pixels/shared';
-import { useGame } from '../state';
+import { runtime, useGame } from '../state';
 import { gameClient } from '../net/client';
+import { distanceToShopCounter, isFarFromShop } from '../net/shopRange';
 import { useDialogFocus } from '../hooks/useDialogFocus';
+import { useTick } from '../hooks/useTick';
 import { closePanel } from './focus';
 import { IconClose, IconCoin } from './icons';
 import { KIND_LABEL, SLOT_LABEL } from './format';
@@ -21,9 +23,13 @@ function ShopDialog() {
   const items = useMemo(() => shopItems(), []);
   const coins = account?.coins ?? 0;
   const invKey = JSON.stringify(account?.inventory ?? {});
+  const lastToast = useGame((s) => s.toasts.at(-1)?.id);
+  useTick(400);
+  const far = isFarFromShop(runtime.local.x, runtime.local.z);
+  const meters = Math.round(distanceToShopCounter(runtime.local.x, runtime.local.z));
 
-  // a server answer (coins or inventory changed) or a toast means the purchase is settled
-  useEffect(() => setPending(null), [coins, invKey]);
+  // a server answer (coins, inventory or a toast such as "too far") means the purchase is settled
+  useEffect(() => setPending(null), [coins, invKey, lastToast]);
   useEffect(() => {
     if (!pending) return;
     const id = setTimeout(() => setPending(null), 4000);
@@ -49,12 +55,37 @@ function ShopDialog() {
           </div>
         </header>
 
+        {far ? (
+          <div className="shop-away" role="status">
+            <span>
+              You&apos;re about {meters} m from the shop counter. You can browse from here, but you need to stand at the counter to buy.
+            </span>
+            <button
+              type="button"
+              className="btn btn--sm btn--accent"
+              onClick={() => {
+                gameClient.navigateTo('shop');
+                closePanel();
+              }}
+            >
+              Walk me to the counter
+            </button>
+          </div>
+        ) : null}
+
         <ul className="shop-grid">
           {items.map((item) => (
-            <ShopCard key={item.id} item={item} coins={coins} pending={pending === item.id} onBuy={() => {
-              setPending(item.id);
-              gameClient.buy(item.id);
-            }} />
+            <ShopCard
+              key={item.id}
+              item={item}
+              coins={coins}
+              far={far}
+              pending={pending === item.id}
+              onBuy={() => {
+                setPending(item.id);
+                gameClient.buy(item.id);
+              }}
+            />
           ))}
         </ul>
 
@@ -66,7 +97,7 @@ function ShopDialog() {
   );
 }
 
-function ShopCard({ item, coins, pending, onBuy }: { item: ShopItem; coins: number; pending: boolean; onBuy: () => void }) {
+function ShopCard({ item, coins, far, pending, onBuy }: { item: ShopItem; coins: number; far: boolean; pending: boolean; onBuy: () => void }) {
   const account = useGame((s) => s.account);
   const price = item.price ?? 0;
   const owned = account?.inventory[item.id] ?? 0;
@@ -79,6 +110,7 @@ function ShopCard({ item, coins, pending, onBuy }: { item: ShopItem; coins: numb
   if (pending) reason = null;
   else if (owned > 0 && !repeatable) reason = wearable ? null : 'Already in your inventory';
   else if (missing > 0) reason = `Need ${missing} more coin${missing === 1 ? '' : 's'}`;
+  else if (far) reason = 'Walk to the shop counter to buy';
 
   const descId = `shop-${item.id}-d`;
   return (

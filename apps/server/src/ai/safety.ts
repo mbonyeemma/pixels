@@ -25,7 +25,7 @@ const RULES: { kind: UnsafeKind; re: RegExp[] }[] = [
       /\b(?:mnemonic|private\s+keys?|secret\s+keys?|api\s?keys?|access\s+tokens?|auth\s+tokens?|passwords?|passphrase)\b/,
       /\b(?:system|hidden|initial|internal)\s+(?:prompt|instructions?|message)\b/,
       /\b(?:reveal|show|tell|print|repeat|leak|dump|display|give)\b.{0,25}\b(?:your|ur)\s+(?:prompt|instructions|rules|configuration|config)\b/,
-      /\b(?:email|e\s?mail)\s+(?:address(?:es)?|of)\b|\b(?:their|his|her|everyone s|other players?s?|players)\s+emails?\b/,
+      /\b(?:email|e\s?mail)\s+(?:address(?:es)?|of)\b|\b(?:my|your|their|his|her|everyone s|other players?s?|players)\s+e\s?mails?\b/,
     ],
   },
   {

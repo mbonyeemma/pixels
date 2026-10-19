@@ -11,6 +11,7 @@ export type MissionTheme = 'bored' | 'earn' | 'beginner' | 'generic';
 
 export type Intent =
   | { kind: 'help'; greeting: boolean }
+  | { kind: 'thanks' }
   | { kind: 'social' }
   | { kind: 'players' }
   | { kind: 'collectible' }
@@ -53,7 +54,8 @@ const TOKEN_BLACKLIST = new Set(['pixel', 'test', 'mock', 'items', 'shop', 'stor
 /* --------------------------------------------------------------------------- patterns */
 
 const GREETING = /^(?:hi|hello|hey|hiya|yo|hola|howdy|greetings|sup|good (?:morning|afternoon|evening|day))(?: (?:there|pixel|guide|assistant|bot|everyone|all))?$/;
-const HELP = /^(?:help|help me|please help|can you help(?: me)?|what can you do|what do you do|what can i ask(?: you)?|how do you work|how does this work|commands|options|menu|who are you|what are you|what is this|how do i play|how to play|instructions|i need help|im lost|i am lost)$/;
+const THANKS = /^(?:thanks|thank you|thanks a lot|thank you so much|ty|thx|cheers|great|cool|nice|awesome|perfect|ok|okay|alright|got it|nice one|great thanks|ok thanks|okay thanks|thanks guide)$/;
+const HELP = /^(?:what is your name|whats your name|do you have a name|your name|help|help me|please help|can you help(?: me)?|what can you do|what do you do|what can i ask(?: you)?|how do you work|how does this work|commands|options|menu|who are you|what are you|what is this|how do i play|how to play|instructions|i need help|im lost|i am lost)$/;
 
 const STATUS =
   /\bwhere am i\b|\bhow (?:many|much) (?:coins?|money|gold)\b.{0,20}\b(?:have|got|own)\b|\bhow (?:many|much) (?:coins?|money) do i\b|\bmy (?:coins|balance|money|wallet)\b|\bwhat do i (?:have|own)\b|\bmy inventory\b|\bwhat am i (?:doing|up to)\b|\b(?:my )?current (?:mission|quest|objective)\b|\bmy (?:mission|quest)\b|\bam i (?:broke|rich)\b|\bcheck my\b/;
@@ -71,19 +73,19 @@ const BUY_SOFT = /\b(?:get me|give me|grab|i want|i wanna|id like|i would like|i
 
 const SHOP_OPEN = /\b(?:open|enter|use|access|launch|pull up|bring up|show me)\b(?: up)? (?:the |your |this |a )?(?:pixel )?(?:shop|store|market|kiosk|shopping)\b|\bshop menu\b|\bopen shop\b|^(?:the )?(?:shop|store|market)$/;
 const SHOP_LIST =
-  /\bwhat (?:can|could|should|do) (?:i|we) (?:buy|afford|purchase)\b|\bwhat (?:is|s) (?:for sale|on sale|available|in (?:the )?(?:shop|store|market)|there to buy)\b|\bwhat (?:do|does) (?:you|the shop|the store|the market|pixel market) (?:sell|have|offer)\b|\bfor sale\b|\bprice list\b|\bwhat can i (?:buy|get)\b|\bshow (?:me )?(?:the )?(?:items|goods|wares|stuff|catalog(?:ue)?|inventory|prices|products|things)\b|\bshow me what\b.{0,20}\b(?:buy|afford|sale|sell)\b|\bbrowse\b|\blist (?:the )?(?:items|shop|prices)\b|\banything to buy\b|\bwhat is there to buy\b|\bafford\b|\bcatalog(?:ue)?\b|\bprices?\b|\bhow much (?:is|are|does|do|for)\b|\bhow expensive\b|\bwhat does .{1,30} cost\b|\bwhat(?:s| is) the price\b/;
+  /\bwhat (?:can|could|should|do) (?:i|we) (?:buy|afford|purchase|get with)\b|\bwith my (?:coins|money)\b|\bwhat(?: is|s) in the (?:shop|store|market)\b|\bwhat(?: is|s) (?:for sale|on sale|available|in (?:the )?(?:shop|store|market)|there to buy|sold)\b|\bwhat (?:do|does) (?:you|the shop|the store|the market|pixel market) (?:sell|have|offer)\b|\bfor sale\b|\bprice list\b|\bwhat can i (?:buy|get)\b|\bshow (?:me )?(?:the )?(?:items|goods|wares|stuff|catalog(?:ue)?|inventory|prices|products|things)\b|\bshow me what\b.{0,20}\b(?:buy|afford|sale|sell)\b|\bbrowse\b|\blist (?:the )?(?:items|shop|prices)\b|\banything to buy\b|\bwhat is there to buy\b|\bafford\b|\bcatalog(?:ue)?\b|\bprices?\b|\bhow much (?:is|are|does|do|for)\b|\bhow expensive\b|\bwhat does .{1,30} cost\b|\bwhat(?:s| is) the price\b/;
 
 const QUESTS_INFO =
   /\b(?:what|which) (?:kinds? |types? |sorts? )?(?:of )?(?:quests?|missions?|challenges?|tasks?) (?:are|do|can|is|exist|there|you)\b|\b(?:list|available|types? of|kinds? of)\b.{0,20}\b(?:quests?|missions?)\b|\b(?:quests?|missions?) (?:are )?(?:available|supported)\b|\bwhat (?:quests?|missions?)\b/;
 const LOCATIONS_LIST =
-  /\b(?:what|which) (?:places|locations|spots|areas|buildings|landmarks)\b|\b(?:list|show)(?: me)? (?:all |the )?(?:places|locations|buildings|landmarks)\b|\bwhat (?:is|s) there to (?:see|visit)\b|\bwhat can i (?:see|visit)\b|\bpoints? of interest\b|\bwhat (?:is|s) in (?:town|this town|the town|pixels)\b|\bsights?\b|\bmap of\b/;
+  /\b(?:what|which) (?:places|locations|spots|areas|buildings|landmarks)\b|\b(?:list|show)(?: me)? (?:all |the )?(?:places|locations|buildings|landmarks)\b|\bwhat(?: is|s) there to (?:see|visit|do)\b|\bwhat can i (?:see|visit)\b|\bpoints? of interest\b|\bwhat(?: is|s) in (?:town|this town|the town|pixels)\b|\bsights?\b|\bmap of\b/;
 
 const MISSION_WORDS =
   /\b(?:quests?|missions?|tasks?|challenges?|jobs?|errands?|deliver\w*|parcels?|packages?|treasures?|hunts?|scavenger|clues?|bored|boring|fun|something to do|anything to do|nothing to do|things to do|activit(?:y|ies)|adventures?|explor\w+|sightsee\w*|earn\w*|coins?|money|rich|cash|beginner|newbie|new here|just started|getting started|get started|first time|tutorial|entertain\w*|keep me busy|what (?:can|should|do) i do|give me something|any ideas|surprise me|somewhere (?:new|fun|interesting|cool|different)|something (?:new|different|interesting|cool|exciting)|anything (?:fun|new|interesting|exciting)|suggest\w*|recommend\w*|ideas)\b/;
 const DELIVERY = /\b(?:deliver\w*|parcels?|packages?|errands?|courier|postman)\b/;
 const TREASURE = /\b(?:treasures?|hunts?|scavenger|clues?|hidden)\b/;
 const VISIT = /\b(?:visit\w*|sightsee\w*|explor\w+|tour|check out|go see)\b/;
-const THEME_BEGINNER = /\b(?:beginner|newbie|new here|just started|getting started|get started|first time|tutorial|new to)\b/;
+const THEME_BEGINNER = /\b(?:beginner|newbie|new here|im new|just started|getting started|get started|first time|tutorial|new to|where (?:do|should|can) i (?:start|begin)|how (?:do|should|can) i (?:start|begin))\b/;
 const THEME_EARN = /\b(?:earn\w*|coins?|money|rich|cash|income|reward\w*)\b/;
 const THEME_BORED = /\b(?:bored|boring|fun|entertain\w*|nothing to do|adventures?|play|keep me busy)\b/;
 
@@ -145,8 +147,37 @@ export function placeCandidates(phrase: string): string[] {
   return out.slice(0, 14);
 }
 
+/** everyday words that point at a place; resolved through api.findLocation like any other query */
+const PLACE_SYNONYMS: Record<string, string> = {
+  food: 'bakery',
+  hungry: 'bakery',
+  starving: 'bakery',
+  snack: 'bakery',
+  snacks: 'bakery',
+  breakfast: 'bakery',
+  pastry: 'bakery',
+  pastries: 'bakery',
+  eat: 'cafe',
+  lunch: 'cafe',
+  dinner: 'cafe',
+  tea: 'cafe',
+  thirsty: 'cafe',
+  letter: 'post office',
+  letters: 'post office',
+  stamps: 'post office',
+  read: 'library',
+  ducks: 'pond',
+  fish: 'pond',
+  swim: 'pond',
+  sit: 'gazebo',
+  relax: 'gazebo',
+  clock: 'town hall',
+};
+
 export function resolveLocation(api: AiGameApi, phrase: string): { hit: LocationHit; query: string } | null {
-  for (const q of placeCandidates(phrase)) {
+  const candidates = placeCandidates(phrase);
+  for (const w of tokens(phrase)) if (PLACE_SYNONYMS[w]) candidates.push(PLACE_SYNONYMS[w]);
+  for (const q of candidates) {
     let hit: LocationHit | null = null;
     try {
       hit = api.findLocation(q);
@@ -208,9 +239,12 @@ export function classify(message: string, api: AiGameApi, lastAssistantText: str
   const words = tokens(t);
   if (GREETING.test(t)) return { kind: 'help', greeting: true };
   if (HELP.test(t)) return { kind: 'help', greeting: false };
-  if (STATUS.test(t)) return { kind: 'status' };
-
+  if (THANKS.test(t) && !(AFFIRM.test(t) && lastAssistantText && /take me there|walk you/i.test(lastAssistantText))) return { kind: 'thanks' };
   const strongBuy = BUY_STRONG.test(t);
+  if (STATUS.test(t) && !strongBuy && !/\bwhat (?:can|could) i\b/.test(t) && !/\bspend\b/.test(t)) return { kind: 'status' };
+  if (THEME_BEGINNER.test(t) && !/\b(?:take|bring|lead|guide|walk|go|head|directions?|route)\b/.test(t)) {
+    return { kind: 'mission', type: undefined, theme: 'beginner', minutes: parseDuration(t), target: null };
+  }
   if (SOCIAL_WITH.test(t) && (CHALLENGE_WORD.test(t) || MISSION_WORDS.test(t)) && !/\bfind (?:me )?(?:some )?players?\b/.test(t)) return { kind: 'social' };
   if (PLAYERS.test(t)) return { kind: 'players' };
 
@@ -267,7 +301,8 @@ export function classify(message: string, api: AiGameApi, lastAssistantText: str
   if (LOCATIONS_LIST.test(t) && !MISSION_WORDS.test(t)) return { kind: 'locations' };
 
   if (MISSION_WORDS.test(t)) {
-    const type: MissionType | undefined = DELIVERY.test(t) ? 'delivery' : TREASURE.test(t) ? 'treasure_hunt' : VISIT.test(t) ? 'visit_location' : undefined;
+    const toPlace = /\b(?:mission|quest|task|challenge)\s+(?:to|at|near)\b/.test(t);
+    const type: MissionType | undefined = DELIVERY.test(t) ? 'delivery' : TREASURE.test(t) ? 'treasure_hunt' : VISIT.test(t) || toPlace ? 'visit_location' : undefined;
     const theme: MissionTheme = THEME_BEGINNER.test(t) ? 'beginner' : THEME_EARN.test(t) && !type ? 'earn' : THEME_BORED.test(t) ? 'bored' : 'generic';
     let target: LocationHit | null = null;
     if (type === 'visit_location') {
@@ -279,7 +314,8 @@ export function classify(message: string, api: AiGameApi, lastAssistantText: str
       const phrase = at >= 0 ? toks.slice(at + 1).join(' ') : '';
       if (phrase && !NOT_A_PLACE.test(phrase)) target = resolveLocation(api, phrase)?.hit ?? null;
     }
-    return { kind: 'mission', type, theme, minutes: parseDuration(t), target };
+    const minutes = parseDuration(t) ?? (/\b(?:quick|short|fast|brief|little)\b/.test(t) ? 2 : /\b(?:long|big|epic|large|proper)\b/.test(t) ? 5 : undefined);
+    return { kind: 'mission', type, theme, minutes, target };
   }
 
   // late attempts: "find the bakery", "show me the library", or just a place name

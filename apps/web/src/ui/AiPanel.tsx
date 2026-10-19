@@ -24,6 +24,7 @@ function AiPanelInner() {
   const busy = useGame((s) => s.aiBusy);
   const usage = useExtras((s) => s.aiUsage);
   const [text, setText] = useState('');
+  const [ideas, setIdeas] = useState(() => useGame.getState().ai.length === 0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const typing = useTypingHandlers();
@@ -35,13 +36,19 @@ function AiPanelInner() {
 
   useEffect(() => {
     const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const last = lines[lines.length - 1];
+    const nodes = el.querySelectorAll<HTMLElement>('.ai-msg--ai[data-line]');
+    // a fresh guide reply is read from its first line; everything else sticks to the bottom
+    if (last?.from === 'ai' && !busy && nodes.length) el.scrollTop = Math.max(0, nodes[nodes.length - 1].offsetTop - 10);
+    else el.scrollTop = el.scrollHeight;
   }, [lines.length, busy]);
 
   const send = (msg: string) => {
     const m = msg.trim();
     if (!m || busy) return;
     speech.stop();
+    setIdeas(false);
     void gameClient.askAi(m);
   };
 
@@ -100,16 +107,23 @@ function AiPanelInner() {
       </div>
 
       <div className="ai-compose">
-        <div className="chips" role="group" aria-label="Example questions">
-          {CHIPS.map((c) => (
-            <button key={c} type="button" className="chip-btn" disabled={busy} onClick={() => send(c)}>
-              {c}
-            </button>
-          ))}
+        {ideas ? (
+          <div className="chips" role="group" aria-label="Example questions">
+            {CHIPS.map((c) => (
+              <button key={c} type="button" className="chip-btn" disabled={busy} onClick={() => send(c)}>
+                {c}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <div className="ai-quick">
+          <button type="button" className="btn btn--accent btn--sm" disabled={busy} onClick={() => send(MISSION_PROMPT)}>
+            Give me a mission
+          </button>
+          <button type="button" className="btn btn--ghost btn--sm" aria-expanded={ideas} onClick={() => setIdeas((v) => !v)}>
+            {ideas ? 'Hide ideas' : 'Ideas'}
+          </button>
         </div>
-        <button type="button" className="btn btn--accent btn--sm btn--block" disabled={busy} onClick={() => send(MISSION_PROMPT)}>
-          Give me a mission
-        </button>
         <div className="ai-input">
           <input
             ref={inputRef}
@@ -146,13 +160,11 @@ function AiPanelInner() {
             <IconSend size={18} />
           </button>
         </div>
-        <div className="ai-voice-msg fineprint" role="status" aria-live="polite">
-          {!speech.supported
-            ? "Voice input isn't available in this browser. Typing works everywhere."
-            : speech.state === 'listening'
-              ? 'Listening… your words appear above. Review them, then press Send.'
-              : speech.message}
-        </div>
+        {speech.state === 'listening' || speech.message ? (
+          <div className="ai-voice-msg fineprint" role="status" aria-live="polite">
+            {speech.state === 'listening' ? 'Listening… your words appear above. Review them, then press Send.' : speech.message}
+          </div>
+        ) : null}
       </div>
     </aside>
   );
@@ -163,7 +175,7 @@ function AiMessage({ line }: { line: AiLine }) {
     return <div className="ai-msg ai-msg--you">{line.text}</div>;
   }
   return (
-    <div className={`ai-msg ai-msg--ai${line.error ? ' is-error' : ''}`}>
+    <div className={`ai-msg ai-msg--ai${line.error ? ' is-error' : ''}`} data-line>
       <p>{line.text}</p>
       {line.interpretation ? (
         <p className="ai-interp">

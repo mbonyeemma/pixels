@@ -53,6 +53,6 @@ export function avatarPalette(id: string): AvatarPalette {
   const hairStyle = pick(HAIR_STYLES);
   const height = 0.95 + rng() * 0.1;
   const build = 0.93 + rng() * 0.15;
-  if (pants === shirt) pants = PANTS_COLORS[0];
+  if ((pants as string) === (shirt as string)) pants = PANTS_COLORS[0];
   return { skin, hair, shirt, pants, shoes, hairStyle, height, build };
 }

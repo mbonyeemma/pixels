@@ -3,6 +3,7 @@ import {
   MISSION_LIMITS,
   REWARDS,
   REWARD_FOR_TYPE,
+  WALK_SPEED,
   locationById,
   publicLocations,
   shopItems,
@@ -162,28 +163,31 @@ export function createFakeApi(opts: FakeApiOptions = {}): FakeApi {
       proposals.push(proposal);
       const injected = rejectQueue.shift();
       if (injected) return { ok: false, error: injected };
-      if (opts.activeMission) return { ok: false, error: 'You already have an active mission.' };
-      if (opts.dailyCapReached) return { ok: false, error: 'You have reached the daily reward limit.' };
+      // error texts and the duration estimate mirror the real mission engine (apps/server/src/missions.ts)
       const v = validateMissionProposal(proposal);
       if (!v.ok) return { ok: false, error: v.error };
       const p = v.proposal;
-      if (opts.cooldownTypes?.includes(p.type)) return { ok: false, error: `Please wait a moment before another ${p.type} mission (cooldown).` };
-      const stops = [p.type === 'delivery' ? p.startLocationId : null, ...p.objectiveLocationIds].filter((x): x is string => !!x).map((id) => locationById(id)!);
+      if (opts.activeMission) return { ok: false, error: 'You already have an active mission. Finish or abandon it before taking another.' };
+      if (opts.cooldownTypes?.includes(p.type)) return { ok: false, error: `You just finished a ${p.type.replace('_', ' ')} mission. Try a different kind, or wait 30 seconds.` };
+      if (opts.dailyCapReached) return { ok: false, error: 'You have reached the daily mission reward limit. Come back tomorrow.' };
+      const stops = (p.type === 'delivery' ? [p.startLocationId, ...p.objectiveLocationIds] : [...p.objectiveLocationIds]).map((id) => locationById(id)!);
       let total = 0;
       let cur = { x: state.x, z: state.z };
       for (const s of stops) {
-        total += Math.hypot(s.x - cur.x, s.z - cur.z);
+        const d = walkDistance(cur, s);
+        total += Number.isFinite(d) ? d : Math.hypot(s.x - cur.x, s.z - cur.z);
         cur = s;
       }
-      if (total < MISSION_LIMITS.minTotalDistance) return { ok: false, error: `That mission is too short; it needs at least ${MISSION_LIMITS.minTotalDistance} m of walking.` };
-      if (total > MISSION_LIMITS.maxTotalDistance) return { ok: false, error: 'That mission is too far away.' };
+      if (total < MISSION_LIMITS.minTotalDistance) return { ok: false, error: `That is too close (${Math.round(total)} m). Missions must involve at least ${MISSION_LIMITS.minTotalDistance} m of walking.` };
+      if (total > MISSION_LIMITS.maxTotalDistance) return { ok: false, error: `That is too far (${Math.round(total)} m). Missions can cover at most ${MISSION_LIMITS.maxTotalDistance} m of walking.` };
       const reward = REWARDS[p.rewardId];
+      const minutes = Math.min(MISSION_LIMITS.maxMinutes, Math.max(MISSION_LIMITS.minMinutes, Math.ceil(total / (WALK_SPEED * 0.8) / 60)));
       const offer: MissionOfferView = {
         offerId: `offer_${offers.length + 1}`,
         title: p.title,
         description: p.description,
         type: p.type,
-        estimatedMinutes: p.estimatedMinutes,
+        estimatedMinutes: minutes,
         objectives: stops.map((s) => `Go to ${s.name}`),
         reward: { label: reward.label, coins: reward.coins, itemId: reward.itemId, mock: true },
         expiresAt: Date.now() + MISSION_LIMITS.offerTtlMs,

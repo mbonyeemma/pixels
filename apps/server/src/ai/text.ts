@@ -23,8 +23,8 @@ export function stripMarkup(s: string): string {
     .replace(/[<>]/g, ' ')
     .replace(/&#?[a-z0-9]{1,10};/gi, ' ')
     .replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, '$1')
-    .replace(/\b(?:https?|ftp|file|data|javascript|vbscript|mailto|blob):[^\s)]*/gi, ' ')
-    .replace(/\bwww\.[^\s)]+/gi, ' ')
+    .replace(/\b(?:https?|ftp|file|data|javascript|vbscript|mailto|blob):\S*/gi, ' ')
+    .replace(/\bwww\.\S+/gi, ' ')
     .replace(/^[ \t]{0,3}#{1,6}[ \t]+/gm, '')
     .replace(/^[ \t]*[-*+][ \t]+/gm, '• ')
     .replace(/`+/g, '')
@@ -63,7 +63,8 @@ export function normalizeMessage(s: string): string {
   return stripControl(s).replace(/\s+/g, ' ').trim();
 }
 
-const EMAIL_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
+/** quantifiers are bounded so hostile inputs cannot trigger quadratic backtracking */
+const EMAIL_RE = /[A-Z0-9._%+-]{1,64}@[A-Z0-9.-]{1,190}\.[A-Z]{2,24}/gi;
 export function redactEmails(s: string): string {
   return s.replace(EMAIL_RE, '[hidden]');
 }

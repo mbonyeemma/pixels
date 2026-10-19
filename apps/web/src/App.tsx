@@ -41,7 +41,7 @@ function GameScreen() {
       <div className="game-root" data-game-root tabIndex={-1}>
         {webgl ? (
           <ErrorBoundary scope="scene" onLogout={() => gameClient.logout()}>
-            <Suspense fallback={<LoadingOverlay message="Loading the 3D town…" />}>
+            <Suspense fallback={<LoadingOverlay scene message="Loading the 3D town…" />}>
               <GameCanvas />
             </Suspense>
           </ErrorBoundary>

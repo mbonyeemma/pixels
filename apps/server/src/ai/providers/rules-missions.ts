@@ -24,8 +24,10 @@ export interface MissionEnv {
 export interface BuildOptions {
   /** location ids the previous attempt used; prefer others */
   avoid?: string[];
-  /** prefer farther places (used after a "too short" rejection) */
+  /** prefer farther places (used after a "too close" rejection) */
   far?: boolean;
+  /** prefer nearer places (used after a "too far" rejection) */
+  near?: boolean;
 }
 
 /** deterministic PRNG (mulberry32) */
@@ -97,7 +99,11 @@ function buildVisit(wish: MissionWish, env: MissionEnv, opts: BuildOptions): Mis
     for (const minD of [15, 10, 0]) {
       const pool = env.locations.filter((l) => ok(l, minD)).sort((a, b) => a.distance - b.distance);
       if (pool.length) {
-        pickLoc = opts.far ? pool[Math.min(pool.length - 1, 3 + Math.floor(env.rng() * 2))] : pool[Math.floor(env.rng() * Math.min(3, pool.length))];
+        pickLoc = opts.far
+          ? pool[Math.min(pool.length - 1, 3 + Math.floor(env.rng() * 2))]
+          : opts.near
+            ? pool[0]
+            : pool[Math.floor(env.rng() * Math.min(3, pool.length))];
         break;
       }
     }
@@ -124,7 +130,7 @@ function buildDelivery(wish: MissionWish, env: MissionEnv, opts: BuildOptions): 
   const start = opts.avoid?.includes(pickups[0]) && pickups[1] ? pickups[1] : pickups[0];
   const sc = coord(start);
   if (!sc) return null;
-  const target = opts.far ? 110 : wish.minutes ? clamp(wish.minutes * 25, 30, 160) : 55;
+  const target = opts.far ? 110 : opts.near ? 30 : wish.minutes ? clamp(wish.minutes * 25, 30, 160) : 55;
   const avoid = new Set(opts.avoid ?? []);
   const drops = (DROPOFF_LOCATION_IDS as readonly string[])
     .filter((id) => publicIds.has(id) && id !== start && !avoid.has(id))
@@ -157,8 +163,9 @@ function buildTreasure(wish: MissionWish, env: MissionEnv, opts: BuildOptions): 
   const preferred = spots.filter((s) => !avoid.has(s.id));
   if (preferred.length >= 2) spots = preferred;
   let k = wish.minutes ? (wish.minutes >= 5 ? 4 : wish.minutes >= 3 ? 3 : 2) : 3;
+  if (opts.near) k = 2;
   k = Math.min(k, spots.length);
-  const pool = opts.far ? spots.slice(Math.min(2, spots.length - k)) : spots.slice(0, Math.min(spots.length, k + 2));
+  const pool = opts.far ? spots.slice(Math.min(2, spots.length - k)) : opts.near ? spots.slice(0, k) : spots.slice(0, Math.min(spots.length, k + 2));
   // choose k from the pool pseudo-randomly, then order them as a short walking route
   const chosen = [...pool];
   for (let i = chosen.length - 1; i > 0; i--) {

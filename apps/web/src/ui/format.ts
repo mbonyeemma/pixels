@@ -63,3 +63,22 @@ export const MISSION_TYPE_LABEL: Record<string, string> = {
   delivery: 'Delivery',
   treasure_hunt: 'Treasure hunt',
 };
+
+export type DotState = 'done' | 'current' | 'todo';
+
+/**
+ * Progress dots for the tracker. Treasure hunts only reveal one spot at a time, so the total comes from the
+ * objective label ("Find treasure spot 2 of 3"); other missions list every objective.
+ */
+export function missionDots(m: { type: string; objectives: { label: string; done: boolean }[]; current: number }): { dots: DotState[]; step: number; total: number } {
+  const objs = m.objectives;
+  let total = objs.length;
+  if (m.type === 'treasure_hunt') {
+    const mt = /\bof\s+(\d+)\s*$/i.exec(objs[objs.length - 1]?.label ?? '');
+    if (mt) total = Math.max(total, Number(mt[1]));
+  }
+  const doneCount = objs.filter((o) => o.done).length;
+  const cur = Math.min(m.current, Math.max(0, total - 1));
+  const dots: DotState[] = Array.from({ length: total }, (_, i) => (i < doneCount || objs[i]?.done ? 'done' : i === cur ? 'current' : 'todo'));
+  return { dots, step: Math.min(cur + 1, total), total };
+}

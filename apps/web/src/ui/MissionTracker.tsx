@@ -3,7 +3,7 @@ import { runtime, useGame } from '../state';
 import { gameClient } from '../net/client';
 import { useTick } from '../hooks/useTick';
 import { IconFlag } from './icons';
-import { MISSION_TYPE_LABEL, formatCountdown, formatDistance, mockSuffix } from './format';
+import { MISSION_TYPE_LABEL, formatCountdown, formatDistance, missionDots, mockSuffix } from './format';
 
 export default function MissionTracker() {
   const mission = useGame((s) => s.mission);
@@ -11,8 +11,8 @@ export default function MissionTracker() {
   useTick(500, !!mission);
   if (!mission) return null;
 
-  const total = mission.objectives.length;
-  const cur = mission.objectives[Math.min(mission.current, total - 1)];
+  const progress = missionDots(mission);
+  const cur = mission.objectives[Math.min(mission.current, mission.objectives.length - 1)];
   const remainingMs = mission.expiresAt - (Date.now() + runtime.serverOffsetMs);
   const dist = cur ? Math.hypot(cur.x - runtime.local.x, cur.z - runtime.local.z) : null;
   const urgent = remainingMs < 60_000;
@@ -29,21 +29,18 @@ export default function MissionTracker() {
       <h3 className="mission-title">{mission.title}</h3>
       {cur ? (
         <p className="mission-obj">
-          <span className="mission-step">
-            Step {Math.min(mission.current + 1, total)} of {total}
-          </span>
+          {progress.total > 1 ? (
+            <span className="mission-step">
+              Step {progress.step} of {progress.total}
+            </span>
+          ) : null}
           {cur.label}
           {dist !== null && Number.isFinite(dist) ? <span className="mission-dist"> · {formatDistance(dist)} away</span> : null}
         </p>
       ) : null}
-      <ol className="dots" aria-label="Progress">
-        {mission.objectives.map((o, i) => (
-          <li
-            key={o.id}
-            className={o.done ? 'is-done' : i === mission.current ? 'is-current' : ''}
-            title={o.label}
-            aria-label={`${o.label}: ${o.done ? 'done' : i === mission.current ? 'current' : 'to do'}`}
-          />
+      <ol className="dots" aria-label={`Progress: step ${progress.step} of ${progress.total}`}>
+        {progress.dots.map((d, i) => (
+          <li key={i} className={d === 'done' ? 'is-done' : d === 'current' ? 'is-current' : ''} aria-label={`Step ${i + 1}: ${d === 'todo' ? 'to do' : d}`} />
         ))}
       </ol>
       <p className="mission-reward">Reward: {mockSuffix(mission.reward.label)}</p>
