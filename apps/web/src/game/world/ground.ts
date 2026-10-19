@@ -79,7 +79,7 @@ function markingsTexture(ctx: WorldCtx): { main: THREE.CanvasTexture; cross: THR
 
 function buildTerrain(ctx: WorldCtx): THREE.Mesh {
   const SIZE = 1000;
-  const SEG = ctx.detail === 'high' ? 200 : 120;
+  const SEG = ctx.detail === 'high' ? 150 : 100;
   const g = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG);
   g.rotateX(-Math.PI / 2);
   const pos = g.getAttribute('position') as THREE.BufferAttribute;

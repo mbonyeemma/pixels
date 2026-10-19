@@ -73,13 +73,16 @@ class SkinBuilder {
     this.parts.push(geo);
   }
   rbox(bone: number, color: string, w: number, h: number, d: number, x: number, y: number, z: number, r = 0.02, o = {}): void {
-    this.add(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), bone, color, x, y, z, o);
+    const rr = Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001);
+    // tiny detail parts use a plain box; larger parts a 2-segment rounded box
+    if (Math.min(w, h, d) < 0.05 || r < 0.015) this.add(new THREE.BoxGeometry(w, h, d), bone, color, x, y, z, o);
+    else this.add(new RoundedBoxGeometry(w, h, d, r > 0.04 ? 2 : 1, rr), bone, color, x, y, z, o);
   }
   capsule(bone: number, color: string, radius: number, total: number, x: number, y: number, z: number, o = {}): void {
-    this.add(new THREE.CapsuleGeometry(radius, Math.max(0.001, total - radius * 2), 3, 8), bone, color, x, y, z, o);
+    this.add(new THREE.CapsuleGeometry(radius, Math.max(0.001, total - radius * 2), 2, 7), bone, color, x, y, z, o);
   }
   sphere(bone: number, color: string, r: number, x: number, y: number, z: number, o = {}): void {
-    this.add(new THREE.SphereGeometry(r, 10, 8), bone, color, x, y, z, o);
+    this.add(new THREE.SphereGeometry(r, 8, 6), bone, color, x, y, z, o);
   }
   box(bone: number, color: string, w: number, h: number, d: number, x: number, y: number, z: number, o = {}): void {
     this.add(new THREE.BoxGeometry(w, h, d), bone, color, x, y, z, o);
@@ -159,7 +162,7 @@ function buildGeometry({ palette: p, equipped, extras }: RigOptions): { geo: THR
       for (const sx of [-1, 1]) sb.rbox(B.head, hairCol, 0.04, 0.3, 0.2, sx * 0.108, hy - 0.04, -0.02, 0.02);
       break;
     case 'spiky':
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < (hat ? 0 : 6); i++) {
         const a = (i / 6) * Math.PI * 2;
         sb.add(new THREE.ConeGeometry(0.04, 0.11, 5), B.head, hairCol, Math.cos(a) * 0.06, hy + 0.17, Math.sin(a) * 0.07, { rz: -Math.cos(a) * 0.35, rx: Math.sin(a) * 0.35 });
       }
@@ -185,9 +188,8 @@ function buildGeometry({ palette: p, equipped, extras }: RigOptions): { geo: THR
   if (hat) {
     const col = hat.color ?? '#c0392b';
     sb.add(new THREE.SphereGeometry(0.128, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), B.head, col, 0, hy + 0.1, 0.0, { sy: 0.95, sz: 1.06 });
-    sb.rbox(B.head, darker(col, 0.8), 0.215, 0.02, 0.15, 0, hy + 0.108, 0.16, 0.01, { rx: 0.08 });
+    sb.rbox(B.head, darker(col, 0.78), 0.2, 0.022, 0.13, 0, hy + 0.105, 0.17, 0.011, { rx: 0.1 });
     sb.sphere(B.head, darker(col, 0.7), 0.018, 0, hy + 0.222, 0);
-    sb.rbox(B.head, darker(col, 0.85), 0.26, 0.02, 0.26, 0, hy + 0.1, 0, 0.01);
   }
   if (face) {
     const col = face.color ?? '#111111';
@@ -206,7 +208,7 @@ function buildGeometry({ palette: p, equipped, extras }: RigOptions): { geo: THR
     const sleeveCol = shirt;
     sb.capsule(arm, p.skin, 0.052, 0.3, x, 1.29, 0);
     sb.capsule(arm, sleeveCol, jacket ? 0.062 : 0.062, jacket ? 0.3 : 0.15, x, jacket ? 1.29 : 1.34, 0);
-    sb.sphere(arm, sleeveCol, 0.066, x, 1.42, 0);
+    sb.sphere(arm, sleeveCol, 0.058, x, 1.425, 0);
     sb.capsule(fore, jacket ? shirt : p.skin, jacket ? 0.056 : 0.046, 0.27, x, 1.02, 0);
     if (jacket) sb.rbox(fore, darker(shirt, 0.82), 0.12, 0.04, 0.12, x, 0.9, 0, 0.015); // cuff
     sb.rbox(fore, p.skin, 0.075, 0.1, 0.05, x, 0.84, 0.005, 0.025);
@@ -370,9 +372,9 @@ export const Avatar = memo(function Avatar({ id, name, equipped, driver, getBubb
       const vis = showTag && camDist < NAME_RANGE;
       sp.visible = vis;
       if (vis) {
-        const k = Math.min(2.3, Math.max(0.85, camDist / 9));
+        const k = Math.min(2.3, Math.max(0.5, camDist / 9));
         sp.scale.set(0.3 * nameTex.aspect * k, 0.3 * k, 1);
-        sp.position.y = 2.0 + 0.04 * k;
+        sp.position.y = 1.98 + 0.1 * k;
       }
     }
     const bs = bubble.current;
@@ -388,9 +390,9 @@ export const Avatar = memo(function Avatar({ id, name, equipped, driver, getBubb
       const vis = !!text && camDist < 45;
       bs.visible = vis;
       if (vis) {
-        const k = Math.min(2.1, Math.max(0.9, camDist / 10));
+        const k = Math.min(2.1, Math.max(0.55, camDist / 10));
         bs.scale.set(2.4 * k, 1.2 * k, 1);
-        bs.position.y = 2.0 + 0.36 * Math.min(2.3, Math.max(0.85, camDist / 9));
+        bs.position.y = 1.98 + 0.1 + 0.3 * Math.min(2.3, Math.max(0.5, camDist / 9));
       }
     }
   });

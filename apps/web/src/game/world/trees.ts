@@ -46,10 +46,10 @@ export function treeGeometry(kind: TreeKind, level: 'near' | 'mid' | 'far'): THR
   const crown = new GeoBuilder();
   const seg = level === 'near' ? 7 : 5;
   if (kind === 'oak') {
-    trunk.cylB(0.17, 0.3, 2.5, seg, 0, 0, 0, '#5b4330');
+    trunk.cylB(0.17, 0.3, 2.5, seg, 0, 0, 0, '#7a5a3e');
     if (level !== 'far') {
-      trunk.cylB(0.07, 0.12, 1.2, 5, 0.35, 1.8, 0.1, '#5b4330', { rz: -0.7 });
-      trunk.cylB(0.07, 0.12, 1.1, 5, -0.3, 2.0, -0.1, '#5b4330', { rz: 0.7 });
+      trunk.cylB(0.07, 0.12, 1.2, 5, 0.35, 1.8, 0.1, '#7a5a3e', { rz: -0.7 });
+      trunk.cylB(0.07, 0.12, 1.1, 5, -0.3, 2.0, -0.1, '#7a5a3e', { rz: 0.7 });
     }
     const blobs: [number, number, number, number, string][] = [
       [1.75, 0, 3.7, 0, '#3f7a34'],
@@ -63,7 +63,7 @@ export function treeGeometry(kind: TreeKind, level: 'near' | 'mid' | 'far'): THR
     return finishTree(trunk, crown, rng, 2, 5.6);
   }
   if (kind === 'pine') {
-    trunk.cylB(0.14, 0.26, 2.2, seg, 0, 0, 0, '#503a2a');
+    trunk.cylB(0.14, 0.26, 2.2, seg, 0, 0, 0, '#6e4f36');
     const cones: [number, number, number, string][] = [
       [1.95, 2.4, 1.2, '#2c5a3a'],
       [1.6, 2.3, 2.4, '#31653f'],
@@ -83,7 +83,7 @@ export function treeGeometry(kind: TreeKind, level: 'near' | 'mid' | 'far'): THR
     return finishTree(trunk, crown, rng, 1.2, 6.2);
   }
   // cypress: tall narrow
-  trunk.cylB(0.12, 0.2, 1.4, seg, 0, 0, 0, '#4d3a2a');
+  trunk.cylB(0.12, 0.2, 1.4, seg, 0, 0, 0, '#6a4e38');
   const g = new THREE.ConeGeometry(0.9, 6.2, level === 'near' ? 8 : 5);
   crown.add(g, '#2f6038', 0, 1.2 + 3.1, 0);
   blob(crown, rng, 0.85, 0, 2.2, 0, '#2f6038', detail, 1.5);
@@ -161,7 +161,7 @@ export function buildTrees(ctx: WorldCtx): THREE.Group {
     const k = pickKind(t.x, t.z, true);
     ring[k].push({ x: t.x, z: t.z, y: outerHeight(t.x, t.z) - 0.15, scale: t.scale * 0.95, rot: rng() * 6.28, tint: rng() });
   }
-  const bandCount = ctx.detail === 'high' ? 520 : 220;
+  const bandCount = ctx.detail === 'high' ? 400 : 180;
   let made = 0;
   let guard = 0;
   while (made < bandCount && guard++ < 20000) {
@@ -182,7 +182,7 @@ export function buildTrees(ctx: WorldCtx): THREE.Group {
 
   // --- far forest on the hills (very cheap)
   const far: Record<'oak' | 'pine', Placement[]> = { oak: [], pine: [] };
-  const farCount = ctx.detail === 'high' ? 900 : 350;
+  const farCount = ctx.detail === 'high' ? 600 : 250;
   made = 0;
   guard = 0;
   while (made < farCount && guard++ < 40000) {
@@ -203,9 +203,9 @@ export function buildTrees(ctx: WorldCtx): THREE.Group {
   // --- bushes around building bases / lots
   const bushGeo = new GeoBuilder();
   const brng = mulberry32(555);
-  blob(bushGeo, brng, 0.62, 0, 0.42, 0, '#3f7a38', 1, 0.8);
-  blob(bushGeo, brng, 0.46, 0.5, 0.33, 0.12, '#4b8a40', 1, 0.8);
-  blob(bushGeo, brng, 0.44, -0.42, 0.32, -0.1, '#36692f', 1, 0.8);
+  blob(bushGeo, brng, 0.62, 0, 0.42, 0, '#3f7a38', 0, 0.8);
+  blob(bushGeo, brng, 0.46, 0.5, 0.33, 0.12, '#4b8a40', 0, 0.8);
+  blob(bushGeo, brng, 0.44, -0.42, 0.32, -0.1, '#36692f', 0, 0.8);
   const bg = bushGeo.build();
   bg.computeVertexNormals();
   jitterFaces(bg, brng, 0.1);

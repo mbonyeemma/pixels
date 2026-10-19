@@ -96,7 +96,8 @@ export default function GameCanvas() {
           dpr={quality === 'low' ? 1 : [1, 1.75]}
           gl={{ antialias: true, powerPreference: 'high-performance' }}
           camera={{ fov: 55, near: 0.15, far: 2500, position: [1.5, 6, 24] }}
-          onCreated={({ gl }) => {
+          onCreated={({ gl, scene }) => {
+            if (import.meta.env.DEV) (window as unknown as { __pixelsDebug: unknown }).__pixelsDebug = { scene, gl };
             gl.toneMapping = THREE.ACESFilmicToneMapping;
             gl.shadowMap.type = THREE.PCFSoftShadowMap;
             gl.info.autoReset = true;
