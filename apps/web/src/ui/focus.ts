@@ -54,3 +54,9 @@ export function togglePanel(p: Panel): void {
   if (useGame.getState().panel === p) closePanel();
   else openPanel(p);
 }
+
+/** Open the shop; when invoked from the AI panel, closing the shop returns to the AI panel. */
+export function openShop(fromAi = false): void {
+  useExtras.getState().patch({ returnPanel: fromAi ? 'ai' : 'none' });
+  useGame.getState().setPanel('shop');
+}

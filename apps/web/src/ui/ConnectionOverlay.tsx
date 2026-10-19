@@ -1,6 +1,5 @@
 import { useGame } from '../state';
-import { gameClient } from '../net/client';
-import { reconnectNow } from '../net/client';
+import { gameClient, reconnectNow } from '../net/client';
 
 /** Blocking card when the server has ended the session (kick) or all else failed. */
 export function DisconnectedOverlay() {
