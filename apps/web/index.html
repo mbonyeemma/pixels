@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1020" />
+    <meta name="description" content="Pixels - a friendly multiplayer 3D town with an AI guide. Coins and items are mock, in-game only." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Pixels</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0b1020; color: #e8ecf8; }
+      body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overflow: hidden; }
+      /* Splash shown until React mounts (React replaces #root's children). CSS only. */
+      .boot { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 18px;
+        background: radial-gradient(1200px 700px at 50% 35%, #1b2a55 0%, #0b1020 70%); }
+      .boot-logo { display: grid; grid-template-columns: repeat(3, 14px); grid-template-rows: repeat(3, 14px); gap: 4px; animation: boot-pulse 1.4s ease-in-out infinite; }
+      .boot-logo i { border-radius: 3px; background: #5eead4; }
+      .boot-logo i:nth-child(2n) { background: #fbbf24; }
+      .boot-logo i:nth-child(5) { background: #fff; }
+      .boot-title { font-size: 22px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+      .boot-sub { font-size: 13px; opacity: 0.65; }
+      @keyframes boot-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.92); opacity: 0.7; } }
+      @media (prefers-reduced-motion: reduce) { .boot-logo { animation: none; } }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="boot" role="status" aria-live="polite">
+        <div class="boot-logo" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="boot-title">Pixels</div>
+        <div class="boot-sub">Loading the town&hellip;</div>
+      </div>
+    </div>
+    <noscript>Pixels needs JavaScript to run.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
