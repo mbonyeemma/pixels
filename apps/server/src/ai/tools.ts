@@ -233,6 +233,14 @@ export class ToolRunner {
     return outcome;
   }
 
+  /** record a call that was not executed (e.g. over the per-round budget) as an error outcome */
+  reject(name: unknown, reason: string): ToolOutcome {
+    const known = typeof name === 'string' && (TOOL_NAMES as readonly string[]).includes(name);
+    const outcome = this.fail(known ? (name as ToolName) : 'unknown', reason);
+    this.outcomes.push(outcome);
+    return outcome;
+  }
+
   private fail(tool: ToolName | 'unknown', error: string): ToolOutcome {
     return { name: tool, ok: false, content: toContent({ ok: false, error }), data: { tool, ok: false, error }, actions: [], step: null };
   }
@@ -249,6 +257,14 @@ export class ToolRunner {
     } catch {
       return this.fail(tool, 'The game could not complete that request. Try something else.');
     }
+  }
+
+  /** error text written by the trusted game server: scrubbed, and any amounts it mentions become known facts */
+  private apiError(raw: unknown, fallback: string): string {
+    const text = typeof raw === 'string' ? cleanInline(raw, 240) : '';
+    if (!text) return fallback;
+    for (const n of extractCoinAmounts(text)) this.facts.rewardCoins.add(n);
+    return text;
   }
 
   private publicLocations(): LocationRow[] {
@@ -305,7 +321,7 @@ export class ToolRunner {
         if (!this.publicLocations().some((l) => l.id === id)) return this.fail(tool, `Unknown location "${id}". Use find_location or list_locations for valid ids.`);
         if (this.navigations >= 1) return this.fail(tool, 'Only one destination per request. The player is already being guided somewhere.');
         const res = api.navigateTo(id);
-        if (!res.ok) return this.fail(tool, cleanInline(res.error, 200) || 'Cannot navigate there.');
+        if (!res.ok) return this.fail(tool, this.apiError(res.error, 'Cannot navigate there.'));
         this.navigations++;
         return {
           name: tool,
@@ -318,7 +334,7 @@ export class ToolRunner {
       }
       case 'open_shop': {
         const res = api.openShop();
-        if (!res.ok) return this.fail(tool, cleanInline(res.error, 200) || 'The shop cannot be opened right now.');
+        if (!res.ok) return this.fail(tool, this.apiError(res.error, 'The shop cannot be opened right now.'));
         return { name: tool, ok: true, content: toContent({ ok: true, note: 'The shop window is opening for the player.' }), data: { tool, ok: true }, actions: [res.action], step: 'Open the shop' };
       }
       case 'list_shop_items': {
@@ -338,7 +354,7 @@ export class ToolRunner {
         if (!this.proposedItems.has(itemId) && this.proposedItems.size >= 3) return this.fail(tool, 'At most three purchase proposals per request.');
         if (this.proposedItems.has(itemId)) return this.fail(tool, `A proposal for "${itemId}" was already shown.`);
         const res = api.proposePurchase(itemId);
-        if (!res.ok) return this.fail(tool, cleanInline(res.error, 200) || 'That item cannot be proposed.');
+        if (!res.ok) return this.fail(tool, this.apiError(res.error, 'That item cannot be proposed.'));
         this.proposedItems.add(itemId);
         const a = res.action;
         this.facts.items.set(a.itemId, { name: a.name, price: a.price });
@@ -380,7 +396,7 @@ export class ToolRunner {
           ...(a.estimatedMinutes !== undefined ? { estimatedMinutes: a.estimatedMinutes } : {}),
         };
         const res = api.createMissionOffer(proposal);
-        if (!res.ok) return this.fail(tool, cleanInline(res.error, 240) || 'The mission was rejected.');
+        if (!res.ok) return this.fail(tool, this.apiError(res.error, 'The mission was rejected.'));
         this.offers++;
         const offer = res.offer;
         if (typeof offer.reward.coins === 'number') this.facts.rewardCoins.add(offer.reward.coins);

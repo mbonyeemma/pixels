@@ -8,15 +8,13 @@ import { useGame } from '../state';
 export function useTypingHandlers(opts: { chat?: boolean } = {}) {
   const focused = useRef(false);
   const chat = !!opts.chat;
-  useEffect(
-    () => () => {
-      if (focused.current) {
-        focused.current = false;
-        useGame.setState(chat ? { typing: false, chatOpen: false } : { typing: false });
-      }
-    },
-    [chat],
-  );
+  useEffect(() => {
+    // (StrictMode's simulated remount keeps the DOM node focused, so re-assert the flag on setup)
+    if (focused.current) useGame.setState(chat ? { typing: true, chatOpen: true } : { typing: true });
+    return () => {
+      if (focused.current) useGame.setState(chat ? { typing: false, chatOpen: false } : { typing: false });
+    };
+  }, [chat]);
   return useMemo(
     () => ({
       onFocus: () => {

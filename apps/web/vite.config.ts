@@ -32,6 +32,11 @@ export default defineConfig({
     target: 'es2022',
     chunkSizeWarningLimit: 1400,
     rollupOptions: {
+      onwarn(warning, defaultHandler) {
+        // zod ships /*@__PURE__*/ annotations Rollup can't place; harmless noise from node_modules
+        if (warning.code === 'INVALID_ANNOTATION' && /node_modules/.test(warning.id ?? '')) return;
+        defaultHandler(warning);
+      },
       output: {
         manualChunks(id) {
           if (THREE_RE.test(id)) return 'three';

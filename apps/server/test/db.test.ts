@@ -81,7 +81,16 @@ describe('persistence', () => {
     accounts.login('alice', 'a@example.com');
     accounts.login('bobby', 'b@example.com');
     expect(fs.existsSync(path.join(dir, 'db.json'))).toBe(false);
-    await new Promise((r) => setTimeout(r, 150));
+    // poll rather than sleep a fixed time: the write is async and the machine may be busy
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      try {
+        if (JSON.parse(fs.readFileSync(path.join(dir, 'db.json'), 'utf8')).accounts.length === 2) break;
+      } catch {
+        /* not written yet */
+      }
+      await new Promise((r) => setTimeout(r, 20));
+    }
     expect(JSON.parse(fs.readFileSync(path.join(dir, 'db.json'), 'utf8')).accounts).toHaveLength(2);
     await db.close();
   });

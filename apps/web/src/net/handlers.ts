@@ -222,6 +222,13 @@ export function handleServerMessage(msg: ServerMessage, hooks: HandlerHooks = {}
         hooks.onAuthError?.(message);
         return;
       }
+      if (msg.code === 'abuse') {
+        // the server is about to close the socket for good: show why and do not auto-reconnect
+        useExtras.getState().patch({ kicked: true, retryAt: null });
+        useGame.setState({ status: 'disconnected', statusDetail: message });
+        hooks.onKicked?.(message);
+        return;
+      }
       st.toast(message, /rate|limit|slow|cooldown/i.test(String(msg.code)) ? 'warn' : 'error');
       return;
     }

@@ -269,7 +269,7 @@
 .hud-btn--danger:hover {
   background: rgba(251, 113, 133, 0.28);
 }
-@media (max-width: 1180px) {
+@media (max-width: 1500px) {
   .hud-btn kbd {
     display: none;
   }

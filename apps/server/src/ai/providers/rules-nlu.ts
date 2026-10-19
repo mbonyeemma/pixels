@@ -79,7 +79,7 @@ const LOCATIONS_LIST =
   /\b(?:what|which) (?:places|locations|spots|areas|buildings|landmarks)\b|\b(?:list|show)(?: me)? (?:all |the )?(?:places|locations|buildings|landmarks)\b|\bwhat (?:is|s) there to (?:see|visit)\b|\bwhat can i (?:see|visit)\b|\bpoints? of interest\b|\bwhat (?:is|s) in (?:town|this town|the town|pixels)\b|\bsights?\b|\bmap of\b/;
 
 const MISSION_WORDS =
-  /\b(?:quests?|missions?|tasks?|challenges?|jobs?|errands?|deliver\w*|parcels?|packages?|treasures?|hunts?|scavenger|clues?|bored|boring|fun|something to do|anything to do|nothing to do|things to do|activit(?:y|ies)|adventures?|explor\w+|sightsee\w*|earn\w*|coins?|money|rich|cash|beginner|newbie|new here|just started|getting started|get started|first time|tutorial|entertain\w*|keep me busy|what (?:can|should|do) i do|give me something|any ideas)\b/;
+  /\b(?:quests?|missions?|tasks?|challenges?|jobs?|errands?|deliver\w*|parcels?|packages?|treasures?|hunts?|scavenger|clues?|bored|boring|fun|something to do|anything to do|nothing to do|things to do|activit(?:y|ies)|adventures?|explor\w+|sightsee\w*|earn\w*|coins?|money|rich|cash|beginner|newbie|new here|just started|getting started|get started|first time|tutorial|entertain\w*|keep me busy|what (?:can|should|do) i do|give me something|any ideas|surprise me|somewhere (?:new|fun|interesting|cool|different)|something (?:new|different|interesting|cool|exciting)|anything (?:fun|new|interesting|exciting)|suggest\w*|recommend\w*|ideas)\b/;
 const DELIVERY = /\b(?:deliver\w*|parcels?|packages?|errands?|courier|postman)\b/;
 const TREASURE = /\b(?:treasures?|hunts?|scavenger|clues?|hidden)\b/;
 const VISIT = /\b(?:visit\w*|sightsee\w*|explor\w+|tour|check out|go see)\b/;
@@ -88,6 +88,8 @@ const THEME_EARN = /\b(?:earn\w*|coins?|money|rich|cash|income|reward\w*)\b/;
 const THEME_BORED = /\b(?:bored|boring|fun|entertain\w*|nothing to do|adventures?|play|keep me busy)\b/;
 
 const NAV_PATTERNS: RegExp[] = [
+  /\b(?:take|bring|lead|guide|walk|escort|send|get)\s+(?:me|us)\s+(?:over\s+)?(there|it)\b/,
+  /\b(?:go|head|walk|run|travel)\s+(there)\b/,
   /\b(?:take|bring|lead|guide|walk|escort|teleport|warp|send|get|drive|run|navigate|direct|show|point)\s+(?:me|us|myself)\s+(?:over\s+|back\s+|straight\s+|there\s+)?(?:to|towards|toward|into|at|by)\s+(.+)$/,
   /\bshow\s+(?:me|us)\s+the\s+(?:way|path|route|road|directions?)\s+(?:to|towards|toward)\s+(.+)$/,
   /\b(?:go|head|walk|run|travel|navigate|move|come|get|make my way|find my way)\s+(?:over\s+|back\s+|straight\s+)?(?:to|towards|toward|into)\s+(.+)$/,
@@ -269,8 +271,13 @@ export function classify(message: string, api: AiGameApi, lastAssistantText: str
     const theme: MissionTheme = THEME_BEGINNER.test(t) ? 'beginner' : THEME_EARN.test(t) && !type ? 'earn' : THEME_BORED.test(t) ? 'bored' : 'generic';
     let target: LocationHit | null = null;
     if (type === 'visit_location') {
-      const m = /\b(?:visit|to|at|near|around)\s+(?:the\s+)?(.+)$/.exec(t);
-      if (m && !NOT_A_PLACE.test(m[1])) target = resolveLocation(api, m[1])?.hit ?? null;
+      const toks = tokens(t);
+      let at = -1;
+      toks.forEach((w, i) => {
+        if (['to', 'at', 'near', 'around', 'visit', 'visiting', 'visits'].includes(w)) at = i;
+      });
+      const phrase = at >= 0 ? toks.slice(at + 1).join(' ') : '';
+      if (phrase && !NOT_A_PLACE.test(phrase)) target = resolveLocation(api, phrase)?.hit ?? null;
     }
     return { kind: 'mission', type, theme, minutes: parseDuration(t), target };
   }

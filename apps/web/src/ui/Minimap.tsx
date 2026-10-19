@@ -25,7 +25,8 @@ export default function Minimap() {
   const pinsRef = useRef<PinHit[]>([]);
   const [northUp, setNorthUp] = useState(() => safeGet(KEYS.minimapNorthUp) === '1');
   const [zoom, setZoom] = useState(() => {
-    const z = Number(safeGet(KEYS.minimapZoom));
+    const raw = safeGet(KEYS.minimapZoom);
+    const z = raw === null ? NaN : Number(raw);
     return Number.isInteger(z) && z >= 0 && z < ZOOMS.length ? z : 1;
   });
   const [hover, setHover] = useState<string | null>(null);

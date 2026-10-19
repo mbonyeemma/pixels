@@ -21,8 +21,13 @@ const HEARTBEAT_MS = 5000;
 const DEAD_AFTER_MS = 20_000;
 const AI_TIMEOUT_MS = 30_000;
 const MOVE_MIN_INTERVAL_MS = (1000 / MOVE_SEND_HZ) * 0.8;
-/** Close codes a server may use for a rejected token. */
+/** Close codes for a rejected token (server uses 4001; 1008/4401/4403 are common alternatives). */
 const AUTH_CLOSE_CODES = new Set([1008, 4001, 4401, 4403]);
+/** Close codes meaning the server ended our session on purpose: do not reconnect automatically (4003 kicked, 4004 abuse). */
+const NO_RECONNECT_CLOSE_CODES = new Map<number, string>([
+  [4003, 'You signed in from another place.'],
+  [4004, 'You were disconnected for sending too many invalid messages.'],
+]);
 
 let socket: WebSocket | null = null;
 let generation = 0;
@@ -43,6 +48,16 @@ function allow(key: string, minMs: number): boolean {
   const prev = lastAt.get(key) ?? -Infinity;
   if (now - prev < minMs) return false;
   lastAt.set(key, now);
+  return true;
+}
+
+/** Mirrors the server's chat limit (3 burst, then ~1 per 1.2 s) so we warn instead of being throttled. */
+const chatTimes: number[] = [];
+function chatAllowed(): boolean {
+  const now = performance.now();
+  while (chatTimes.length && now - chatTimes[0] > 3600) chatTimes.shift();
+  if (chatTimes.length >= 3) return false;
+  chatTimes.push(now);
   return true;
 }
 
@@ -123,6 +138,15 @@ function startHeartbeat(gen: number): void {
   sendRaw({ t: 'ping', c: Date.now() });
 }
 
+/** The server ended the session on purpose: stop everything, show why, offer a manual "Reconnect". */
+function endSession(reason: string): void {
+  intentionalClose = true;
+  clearTimers();
+  detachSocket();
+  useExtras.getState().patch({ kicked: true, retryAt: null });
+  useGame.setState({ status: 'disconnected', statusDetail: reason });
+}
+
 const hooks: HandlerHooks = {
   onWelcome: () => {
     welcomedThisSocket = true;
@@ -198,6 +222,11 @@ function onSocketClosed(gen: number, code: number): void {
   if (!token) return;
   if (AUTH_CLOSE_CODES.has(code)) {
     authFailed();
+    return;
+  }
+  const endedByServer = NO_RECONNECT_CLOSE_CODES.get(code);
+  if (endedByServer) {
+    endSession(endedByServer);
     return;
   }
   if (hadWelcome) {
@@ -441,7 +470,7 @@ export const gameClient: GameClientApi = {
   sendChat(text) {
     const clean = sanitizeChat(text);
     if (!clean) return;
-    if (!allow('chat', 500)) {
+    if (!chatAllowed()) {
       useGame.getState().toast("You're chatting too fast. Slow down a little.", 'warn');
       return;
     }

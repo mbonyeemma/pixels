@@ -2,7 +2,7 @@ import { CHAT_MAX_LENGTH } from '@pixels/shared';
 
 // C0/C1 controls, zero-width + bidi override/isolate characters, BOM, line/paragraph separators.
 // eslint-disable-next-line no-control-regex
-const UNSAFE = /[\u0000-\u001f\u007f-\u009f​-‏ -‮⁠-⁩﻿]/g;
+const UNSAFE = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/g;
 
 /**
  * Normalises user-typed or received chat text: strips control and invisible/bidi characters, collapses

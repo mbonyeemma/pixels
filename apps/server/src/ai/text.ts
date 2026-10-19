@@ -4,8 +4,13 @@
  */
 
 /** C0/C1 control chars (except \t \n \r), soft hyphen, zero-width and bidi-override characters, BOM. */
-// eslint-disable-next-line no-control-regex
-const CONTROL_RE = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f­؜᠎​-‏  ‪-‮⁠-⁩﻿]/g;
+const esc = (n: number) => '\\u' + n.toString(16).padStart(4, '0');
+const range = ([a, b]: [number, number]) => esc(a) + (b > a ? '-' + esc(b) : '');
+const CONTROL_RANGES: [number, number][] = [
+  [0x00, 0x08], [0x0b, 0x0c], [0x0e, 0x1f], [0x7f, 0x9f], [0xad, 0xad], [0x61c, 0x61c], [0x180e, 0x180e],
+  [0x200b, 0x200f], [0x2028, 0x2029], [0x202a, 0x202e], [0x2060, 0x2069], [0xfeff, 0xfeff],
+];
+const CONTROL_RE = new RegExp('[' + CONTROL_RANGES.map(range).join('') + ']', 'g');
 
 export function stripControl(s: string): string {
   return s.replace(CONTROL_RE, '').replace(/\r\n?/g, '\n');
@@ -63,12 +68,14 @@ export function redactEmails(s: string): string {
   return s.replace(EMAIL_RE, '[hidden]');
 }
 
+const COMBINING_MARKS_RE = new RegExp('[' + esc(0x300) + '-' + esc(0x36f) + ']', 'g');
+
 /** Lowercase, accent-free, apostrophe-free, punctuation-free form used by the rules engine and matchers. */
 export function norm(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(COMBINING_MARKS_RE, '')
     .replace(/['’`]/g, '')
     .replace(/[^a-z0-9 ]+/g, ' ')
     .replace(/\s+/g, ' ')
