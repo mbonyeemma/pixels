@@ -132,6 +132,8 @@ export class Database {
   private accounts = new Map<string, AccountRecord>();
   private byEmail = new Map<string, string>();
   private byToken = new Map<string, string>();
+  /** lower-cased username -> tags in use */
+  private tags = new Map<string, Set<string>>();
   private dirty = false;
   private timer: NodeJS.Timeout | null = null;
   private inflight: Promise<void> | null = null;
@@ -209,6 +211,10 @@ export class Database {
     this.accounts.set(acc.id, acc);
     this.byEmail.set(acc.email, acc.id);
     for (const t of acc.tokens) this.byToken.set(t.hash, acc.id);
+    const key = acc.username.toLowerCase();
+    let used = this.tags.get(key);
+    if (!used) this.tags.set(key, (used = new Set()));
+    used.add(acc.tag);
   }
 
   /* ------------------------------------------------------------ queries */
@@ -237,9 +243,7 @@ export class Database {
 
   /** True when another account already uses this username+tag (usernames compare case-insensitively). */
   tagTaken(username: string, tag: string): boolean {
-    const u = username.toLowerCase();
-    for (const a of this.accounts.values()) if (a.tag === tag && a.username.toLowerCase() === u) return true;
-    return false;
+    return this.tags.get(username.toLowerCase())?.has(tag) ?? false;
   }
 
   /* ---------------------------------------------------------- mutations */
