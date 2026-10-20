@@ -60,6 +60,72 @@ export interface AccountRecord {
   wallet: string | null;
 }
 
+/** A server-issued, single-purpose payment request (optional Solana Devnet payments). */
+export interface PaymentIntentRecord {
+  id: string;
+  accountId: string;
+  itemId: string;
+  /** amount taken from the server catalogue at creation time */
+  lamports: number;
+  /** the account's linked wallet at creation time: the only wallet allowed to pay for this intent */
+  payer: string;
+  treasury: string;
+  /** random one-time public key (base58) that must appear in the payment transaction */
+  reference: string;
+  memo: string;
+  createdAt: number;
+  /** payment deadline */
+  expiresAt: number;
+  /** `paid_not_granted`: verified on-chain but the item could not be granted (needs a manual refund) */
+  status: 'pending' | 'fulfilled' | 'paid_not_granted';
+  /** set once settled */
+  signature?: string;
+  fulfilledAt?: number;
+  slot?: number;
+}
+
+/** Ledger of transaction signatures that have been used to settle an intent: a signature can only ever be used once. */
+export interface UsedSignatureRecord {
+  signature: string;
+  intentId: string;
+  accountId: string;
+  at: number;
+  slot?: number;
+  lamports?: number;
+  /** `paid_not_granted`: verified on-chain but the item could not be granted (e.g. already owned); needs a manual refund */
+  outcome: 'granted' | 'paid_not_granted';
+}
+
+const IntentSchema = z.object({
+  id: z.string().min(1),
+  accountId: z.string().min(1),
+  itemId: z.string().min(1),
+  lamports: z.number().int().positive(),
+  payer: z.string().min(1),
+  treasury: z.string().min(1),
+  reference: z.string().min(1),
+  memo: z.string(),
+  createdAt: z.number(),
+  expiresAt: z.number(),
+  status: z.enum(['pending', 'fulfilled', 'paid_not_granted']),
+  signature: z.string().optional(),
+  fulfilledAt: z.number().optional(),
+  slot: z.number().optional(),
+});
+const UsedSignatureSchema = z.object({
+  signature: z.string().min(1),
+  intentId: z.string().min(1),
+  accountId: z.string().min(1),
+  at: z.number(),
+  slot: z.number().optional(),
+  lamports: z.number().optional(),
+  outcome: z.enum(['granted', 'paid_not_granted']).default('granted'),
+});
+const PaymentsFileSchema = z.object({ intents: z.array(z.unknown()).default([]), signatures: z.array(z.unknown()).default([]) });
+
+/** Pending intents are dropped this long after they expired (fulfilled intents are kept as receipts). */
+const INTENT_RETENTION_MS = 24 * 60 * 60_000;
+
 const MissionTypeSchema = z.enum(['visit_location', 'delivery', 'treasure_hunt']);
 const ActiveMissionSchema = z.object({
   id: z.string().min(1),
@@ -95,7 +161,7 @@ const AccountSchema = z.object({
   wallet: z.string().nullable().default(null),
 });
 
-const FileSchema = z.object({ version: z.number().optional(), accounts: z.array(z.unknown()) });
+const FileSchema = z.object({ version: z.number().optional(), accounts: z.array(z.unknown()), payments: PaymentsFileSchema.optional() });
 
 function normalizeAccount(raw: z.infer<typeof AccountSchema>): AccountRecord {
   const equipped: Equipped = {};
@@ -132,6 +198,10 @@ export class Database {
   private accounts = new Map<string, AccountRecord>();
   private byEmail = new Map<string, string>();
   private byToken = new Map<string, string>();
+  /** linked Solana wallet (base58 public key) -> account id */
+  private byWallet = new Map<string, string>();
+  private intents = new Map<string, PaymentIntentRecord>();
+  private usedSignatures = new Map<string, UsedSignatureRecord>();
   /** lower-cased username -> tags in use */
   private tags = new Map<string, Set<string>>();
   private dirty = false;
@@ -194,7 +264,15 @@ export class Database {
       this.log.warn('db: dropped invalid accounts while loading', { dropped });
       this.backupCorrupt('invalid-accounts');
     }
-    this.log.info('db: loaded', { accounts: this.accounts.size });
+    for (const rawIntent of top.data.payments?.intents ?? []) {
+      const r = IntentSchema.safeParse(rawIntent);
+      if (r.success && this.accounts.has(r.data.accountId)) this.intents.set(r.data.id, r.data);
+    }
+    for (const rawSig of top.data.payments?.signatures ?? []) {
+      const r = UsedSignatureSchema.safeParse(rawSig);
+      if (r.success) this.usedSignatures.set(r.data.signature, r.data);
+    }
+    this.log.info('db: loaded', { accounts: this.accounts.size, intents: this.intents.size, signatures: this.usedSignatures.size });
   }
 
   private backupCorrupt(reason: string): void {
@@ -211,6 +289,16 @@ export class Database {
     this.accounts.set(acc.id, acc);
     this.byEmail.set(acc.email, acc.id);
     for (const t of acc.tokens) this.byToken.set(t.hash, acc.id);
+    if (acc.wallet) {
+      const owner = this.byWallet.get(acc.wallet);
+      if (owner && owner !== acc.id) {
+        // a wallet can belong to one account only: the first one loaded keeps it
+        this.log.warn('db: wallet linked to two accounts, unlinking the later one', { account: acc.id });
+        acc.wallet = null;
+      } else {
+        this.byWallet.set(acc.wallet, acc.id);
+      }
+    }
     const key = acc.username.toLowerCase();
     let used = this.tags.get(key);
     if (!used) this.tags.set(key, (used = new Set()));
@@ -230,6 +318,11 @@ export class Database {
 
   findByTokenHash(hash: string): AccountRecord | undefined {
     const id = this.byToken.get(hash);
+    return id ? this.accounts.get(id) : undefined;
+  }
+
+  findByWallet(publicKey: string): AccountRecord | undefined {
+    const id = this.byWallet.get(publicKey);
     return id ? this.accounts.get(id) : undefined;
   }
 
@@ -264,6 +357,62 @@ export class Database {
     this.save();
   }
 
+  /**
+   * Link (or, with null, unlink) a wallet. Refuses a wallet that already belongs to another account.
+   * Returns false when refused.
+   */
+  setWallet(acc: AccountRecord, publicKey: string | null): boolean {
+    if (publicKey) {
+      const owner = this.byWallet.get(publicKey);
+      if (owner && owner !== acc.id) return false;
+    }
+    if (acc.wallet && this.byWallet.get(acc.wallet) === acc.id) this.byWallet.delete(acc.wallet);
+    acc.wallet = publicKey;
+    if (publicKey) this.byWallet.set(publicKey, acc.id);
+    this.save();
+    return true;
+  }
+
+  /* ----------------------------------------------------- payments ledger */
+
+  getIntent(id: string): PaymentIntentRecord | undefined {
+    return this.intents.get(id);
+  }
+
+  intentsOf(accountId: string): PaymentIntentRecord[] {
+    return [...this.intents.values()].filter((i) => i.accountId === accountId);
+  }
+
+  putIntent(intent: PaymentIntentRecord): void {
+    this.intents.set(intent.id, intent);
+    this.save();
+  }
+
+  /** Drop pending intents that expired more than a day ago. Fulfilled intents are receipts and stay. */
+  pruneIntents(now: number): void {
+    let removed = false;
+    for (const [id, i] of this.intents) {
+      if (i.status === 'pending' && i.expiresAt + INTENT_RETENTION_MS < now) {
+        this.intents.delete(id);
+        removed = true;
+      }
+    }
+    if (removed) this.save();
+  }
+
+  findSignature(signature: string): UsedSignatureRecord | undefined {
+    return this.usedSignatures.get(signature);
+  }
+
+  recordSignature(rec: UsedSignatureRecord): void {
+    this.usedSignatures.set(rec.signature, rec);
+    this.save();
+  }
+
+  get signatureCount(): number {
+    return this.usedSignatures.size;
+  }
+
   /** Keep the claim ledger bounded (oldest entries first). */
   pruneClaims(acc: AccountRecord): void {
     const keys = Object.keys(acc.missionClaims);
@@ -287,7 +436,12 @@ export class Database {
   }
 
   private serialize(): string {
-    return JSON.stringify({ version: 1, savedAt: this.clock(), accounts: [...this.accounts.values()] });
+    return JSON.stringify({
+      version: 1,
+      savedAt: this.clock(),
+      accounts: [...this.accounts.values()],
+      payments: { intents: [...this.intents.values()], signatures: [...this.usedSignatures.values()] },
+    });
   }
 
   private writeNow(): Promise<void> {

@@ -33,6 +33,69 @@ export interface LoginResponse {
   account: AccountView;
 }
 
+/* ------------------------------------------------- optional Solana Devnet payments */
+
+/** GET /api/config (public). When `enabled` is false there is no wallet UI and the wallet/pay endpoints answer 404. */
+export interface PaymentConfigView {
+  enabled: boolean;
+  /** always 'devnet': the server refuses to run payments against any other cluster */
+  cluster: 'devnet';
+  /** treasury PUBLIC key that receives payments (only when enabled) */
+  treasury?: string;
+  /** SPL token mint when token pricing is configured; null/absent = SOL only (token pricing is not implemented yet) */
+  tokenMint?: string | null;
+}
+
+/** POST /api/wallet/challenge response: the exact text the wallet signs. */
+export interface WalletChallengeView {
+  nonce: string;
+  message: string;
+  expiresAt: number;
+}
+
+/** POST /api/pay/intent response. The amount comes from the server catalogue only. */
+export interface PayIntentView {
+  intentId: string;
+  itemId: string;
+  lamports: number;
+  treasury: string;
+  /** random one-time public key that must appear (read-only, non-signer) in the payment transaction */
+  reference: string;
+  /** "pixels:<intentId>" (informational; the reference is what binds the transaction to the intent) */
+  memo: string;
+  /** payment deadline (ms epoch) */
+  expiresAt: number;
+  cluster: 'devnet';
+}
+
+/** POST /api/wallet/verify response. `signin` carries a fresh token (same shape as LoginResponse). */
+export interface WalletVerifyResponse {
+  mode: 'link' | 'signin';
+  account: AccountView;
+  token?: string;
+}
+
+/** POST /api/pay/confirm success response. */
+export interface PayConfirmResponse {
+  ok: true;
+  item: { id: string; name: string };
+  signature: string;
+}
+
+export const WalletChallengeRequestSchema = z.object({ publicKey: z.string().min(32).max(44) });
+export const WalletVerifyRequestSchema = z.object({
+  publicKey: z.string().min(32).max(44),
+  /** base58 ed25519 signature (64 bytes) */
+  signature: z.string().min(64).max(100),
+  /** optional: the nonce from the challenge (lets the server pick the exact challenge) */
+  nonce: z.string().min(8).max(64).optional(),
+});
+export const PayIntentRequestSchema = z.object({ itemId: z.string().min(1).max(40) });
+export const PayConfirmRequestSchema = z.object({
+  intentId: z.string().min(8).max(64),
+  signature: z.string().min(64).max(100),
+});
+
 export const AiRequestSchema = z.object({
   message: z.string().trim().min(1).max(AI_MESSAGE_MAX_LENGTH),
 });

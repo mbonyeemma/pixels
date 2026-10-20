@@ -63,6 +63,15 @@ export class Accounts {
     return { ok: true, token, account, created };
   }
 
+  /** Mint a fresh bearer token for an existing account (used by wallet sign-in). */
+  issueToken(account: AccountRecord): string {
+    const token = randomHex(32);
+    account.lastLoginAt = this.clock();
+    this.db.addToken(account, sha256Hex(token));
+    this.log.info('login', { account: account.id, via: 'wallet' });
+    return token;
+  }
+
   /** Random unused 4-digit tag for this username (case-insensitive), or null if all 10000 are taken. */
   private pickTag(username: string): string | null {
     for (let i = 0; i < 60; i++) {

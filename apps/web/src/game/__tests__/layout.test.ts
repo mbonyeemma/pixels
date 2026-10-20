@@ -47,7 +47,7 @@ describe('world data sanity used by the renderer', () => {
   it('terrain is flat inside the town and rises outside', () => {
     expect(outerHeight(0, 0)).toBe(0);
     expect(outerHeight(55, -55)).toBe(0);
-    expect(outerHeight(300, 0)).toBeGreaterThan(10);
+    expect(outerHeight(450, 0)).toBeGreaterThan(10);
   });
   it('every tree prop has a collider (rendering and collision stay consistent)', () => {
     const trees = PROPS.filter((p) => p.kind === 'tree');

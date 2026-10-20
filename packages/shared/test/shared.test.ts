@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   COLLIDERS, LOCATIONS, PLAYER_RADIUS, SPAWN, findPath, isBlocked, resolveCollisions, validateMissionProposal, walkDistance,
   BUILDINGS, PROPS, ClientMessageSchema, worldTimeOfDay, PICKUP_LOCATION_IDS, DROPOFF_LOCATION_IDS, locationById, SHOP_COUNTER, MISSION_LIMITS,
+  ITEMS, shopItems, toShopItemView, hasLamportPrice, itemById, LAMPORTS_PER_SOL, DEVNET_LABEL, DEVNET_GENESIS_HASH,
+  WalletChallengeRequestSchema, WalletVerifyRequestSchema, PayIntentRequestSchema, PayConfirmRequestSchema,
 } from '../src';
 
 describe('world data', () => {
@@ -82,5 +84,59 @@ describe('protocol', () => {
   it('computes time of day', () => {
     expect(worldTimeOfDay(0, 1200)).toBe(0);
     expect(worldTimeOfDay(600_000, 1200)).toBeCloseTo(0.5);
+  });
+});
+
+describe('devnet lamport prices (optional payments)', () => {
+  it('only a few items carry a lamport price, all with a valid coin price too (payable both ways)', () => {
+    const priced = ITEMS.filter(hasLamportPrice);
+    expect(priced.map((i) => i.id).sort()).toEqual(['explorer_cap', 'genesis_pixel', 'sunset_hoodie']);
+    for (const i of priced) {
+      expect(Number.isSafeInteger(i.priceLamports)).toBe(true);
+      expect(i.priceLamports).toBeGreaterThan(0);
+      // test-network amounts stay tiny: never more than 0.05 SOL
+      expect(i.priceLamports).toBeLessThanOrEqual(0.05 * LAMPORTS_PER_SOL);
+      expect(i.price).not.toBeNull();
+    }
+    expect(itemById('genesis_pixel')!.priceLamports).toBe(10_000_000);
+    expect(itemById('sunset_hoodie')!.priceLamports).toBe(5_000_000);
+    expect(itemById('explorer_cap')!.priceLamports).toBe(2_000_000);
+  });
+
+  it('keeps the coin prices unchanged', () => {
+    expect(Object.fromEntries(ITEMS.map((i) => [i.id, i.price]))).toEqual({
+      coffee: 5, explorer_cap: 40, round_shades: 60, neon_sneakers: 80, sunset_hoodie: 120, genesis_pixel: 250, explorer_badge: null,
+    });
+  });
+
+  it('exposes priceLamports on the view only when the item has one', () => {
+    const views = shopItems().map(toShopItemView);
+    expect(views.find((v) => v.id === 'genesis_pixel')!.priceLamports).toBe(10_000_000);
+    expect('priceLamports' in views.find((v) => v.id === 'coffee')!).toBe(false);
+    expect(views.find((v) => v.id === 'coffee')!.price).toBe(5);
+  });
+
+  it('hasLamportPrice rejects missing, zero, negative, fractional and unsafe values', () => {
+    const base = ITEMS[0];
+    for (const bad of [undefined, 0, -1, 1.5, Number.NaN, 2 ** 60]) expect(hasLamportPrice({ ...base, priceLamports: bad as number })).toBe(false);
+    expect(hasLamportPrice({ ...base, priceLamports: 1 })).toBe(true);
+  });
+
+  it('labels and constants', () => {
+    expect(DEVNET_LABEL).toBe('DEVNET TEST — no real value');
+    expect(DEVNET_GENESIS_HASH).toMatch(/^[1-9A-HJ-NP-Za-km-z]{43,44}$/);
+  });
+
+  it('request schemas accept well-formed bodies and reject junk', () => {
+    const pk = '11111111111111111111111111111112';
+    expect(WalletChallengeRequestSchema.safeParse({ publicKey: pk }).success).toBe(true);
+    expect(WalletChallengeRequestSchema.safeParse({ publicKey: 'short' }).success).toBe(false);
+    expect(WalletChallengeRequestSchema.safeParse({}).success).toBe(false);
+    expect(WalletVerifyRequestSchema.safeParse({ publicKey: pk, signature: 'x'.repeat(88) }).success).toBe(true);
+    expect(WalletVerifyRequestSchema.safeParse({ publicKey: pk, signature: 'x'.repeat(10) }).success).toBe(false);
+    expect(PayIntentRequestSchema.safeParse({ itemId: 'genesis_pixel' }).success).toBe(true);
+    expect(PayIntentRequestSchema.safeParse({ itemId: '' }).success).toBe(false);
+    expect(PayConfirmRequestSchema.safeParse({ intentId: 'a'.repeat(16), signature: 'x'.repeat(88) }).success).toBe(true);
+    expect(PayConfirmRequestSchema.safeParse({ intentId: 'a', signature: 'x'.repeat(88) }).success).toBe(false);
   });
 });

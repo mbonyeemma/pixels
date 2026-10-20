@@ -63,6 +63,33 @@ export class Shop {
     return this.provider.id;
   }
 
+  /** Ownership and stack rules only: could this account receive one more of this item right now? */
+  checkGrantable(account: AccountRecord, item: ShopItem): { ok: true } | { ok: false; error: string } {
+    const owned = account.inventory[item.id] ?? 0;
+    if (item.kind === 'consumable') {
+      if (owned >= MAX_STACK) return { ok: false, error: `You cannot carry more than ${MAX_STACK} ${item.name}.` };
+    } else if (owned > 0) {
+      return { ok: false, error: `You already own ${item.name}.` };
+    }
+    return { ok: true };
+  }
+
+  /**
+   * The one inventory code path: add a single item to the account (after re-checking ownership/stack rules) and save.
+   * Used by coin purchases and by verified Solana Devnet payments. It never charges anything itself.
+   */
+  grantItem(account: AccountRecord, item: ShopItem): { ok: true } | { ok: false; error: string } {
+    const check = this.checkGrantable(account, item);
+    if (!check.ok) return check;
+    this.addToInventory(account, item);
+    return { ok: true };
+  }
+
+  private addToInventory(account: AccountRecord, item: ShopItem): void {
+    account.inventory[item.id] = (account.inventory[item.id] ?? 0) + 1;
+    this.db.save();
+  }
+
   /** Can this account buy this item right now (catalogue, ownership and stack rules; not coins or range)? */
   checkPurchasable(account: AccountRecord, itemId: string): Purchasable {
     const item = itemById(itemId);
@@ -70,12 +97,8 @@ export class Shop {
     if (item.price === null || !Number.isSafeInteger(item.price) || item.price < 0) {
       return { ok: false, error: `${item.name} is not for sale.` };
     }
-    const owned = account.inventory[item.id] ?? 0;
-    if (item.kind === 'consumable') {
-      if (owned >= MAX_STACK) return { ok: false, error: `You cannot carry more than ${MAX_STACK} ${item.name}.` };
-    } else if (owned > 0) {
-      return { ok: false, error: `You already own ${item.name}.` };
-    }
+    const grantable = this.checkGrantable(account, item);
+    if (!grantable.ok) return grantable;
     return { ok: true, item: item as ShopItem & { price: number } };
   }
 
@@ -96,8 +119,7 @@ export class Shop {
     try {
       const charged = await this.provider.charge(account, item.price, item);
       if (!charged.ok) return fail(charged.reason);
-      account.inventory[item.id] = (account.inventory[item.id] ?? 0) + 1;
-      this.db.save();
+      this.addToInventory(account, item);
       this.log.info('purchase', { account: account.id, item: item.id, price: item.price, provider: this.provider.id });
       return { ok: true, itemId, message: `Bought ${item.name} for ${item.price} coins.`, coins: account.coins };
     } catch (err) {

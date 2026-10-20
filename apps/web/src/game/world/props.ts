@@ -232,7 +232,7 @@ function buildFountain(ctx: WorldCtx, root: THREE.Group): void {
         size = 0.07; alpha = 0.8;
       }
     `,
-    seedFn: (_i, s) => { s[3] = s[3]; },
+    seedFn: () => {},
   });
   jets.mesh.position.set(0, 0, 0);
   g.add(jets.mesh);

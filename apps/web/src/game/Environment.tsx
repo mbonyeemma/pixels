@@ -39,7 +39,7 @@ const nightFrag = /* glsl */ `
   void main() {
     vec3 d = normalize(vDir);
     float h = clamp(d.y, 0.0, 1.0);
-    vec3 col = mix(uHorizon, uZenith, pow(h, 0.55));
+    vec3 col = mix(uHorizon, uZenith, smoothstep(0.02, 0.95, h));
     // stars
     vec3 p = d * 110.0;
     vec3 id = floor(p);

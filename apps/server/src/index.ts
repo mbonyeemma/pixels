@@ -5,6 +5,8 @@ import { createAssistant } from './ai/index';
 import { loadConfig } from './config';
 import { createLogger } from './log';
 import { createServer } from './server';
+import { PaymentsConfigError } from './solana/config';
+import { HttpSolanaRpc } from './solana/rpc';
 
 /** Load a .env file if present. Real environment variables always win. */
 function loadDotEnv(file: string): void {
@@ -19,7 +21,15 @@ const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 loadDotEnv(path.resolve(process.cwd(), '.env'));
 loadDotEnv(path.resolve(serverDir, '../../.env'));
 
-const config = loadConfig(process.env, process.cwd(), serverDir);
+let config: ReturnType<typeof loadConfig>;
+try {
+  config = loadConfig(process.env, process.cwd(), serverDir);
+} catch (err) {
+  // an enabled-but-unsafe payments setup (mainnet, missing treasury, secret key in env...) must stop the server
+  const msg = err instanceof PaymentsConfigError ? err.problems.join('\n  ') : String(err);
+  console.error(`Refusing to start: ${msg}`);
+  process.exit(1);
+}
 const log = createLogger(config.logLevel);
 
 const assistant = createAssistant(config.ai);
@@ -31,6 +41,7 @@ const server = createServer({
   assistant,
   logger: log,
   trustProxy: config.trustProxy,
+  payments: config.payments.enabled ? { config: config.payments, rpc: new HttpSolanaRpc(config.payments.rpcUrl) } : undefined,
 });
 
 let shuttingDown = false;
@@ -69,7 +80,17 @@ server
       dataDir: config.dataDir,
       static: staticDir ?? 'none',
       ai: `${ai.provider}${ai.model ? '/' + ai.model : ''}`,
+      payments: config.payments.enabled ? `solana-devnet rpc=${new HttpSolanaRpc(config.payments.rpcUrl).host}` : 'off',
     });
+    // Cluster guard at startup: a node that is not Devnet stops the server; an unreachable node only logs (retried per payment)
+    if (server.payments) {
+      void server.payments.ensureDevnet().then((state) => {
+        if (state === 'blocked') {
+          log.error('refusing to run: SOLANA_RPC_URL does not serve Solana Devnet');
+          void shutdown('cluster-guard');
+        } else if (state === 'ok') log.info('solana devnet confirmed (genesis hash)');
+      });
+    }
   })
   .catch((err) => {
     log.error('failed to start', { err });

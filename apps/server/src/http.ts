@@ -7,6 +7,7 @@ import type { Database } from './db';
 import type { Game } from './game';
 import type { Logger } from './log';
 import { KeyedLimiter } from './rateLimit';
+import type { SolanaRoutes } from './solana/routes';
 import { createStaticHandler } from './static';
 import type { Clock } from './util';
 
@@ -18,6 +19,8 @@ export interface HttpDeps {
   game: Game;
   assistant: Assistant;
   aiApiDeps: AiApiDeps;
+  /** optional Solana Devnet wallet/payment routes (GET /api/config is always answered, even when payments are off) */
+  solana?: SolanaRoutes;
   clock: Clock;
   log: Logger;
   startedAt: number;
@@ -51,7 +54,7 @@ const AI_STATUS: Record<AiErrorResponse['code'], number> = {
 
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   'Access-Control-Max-Age': '600',
 };
@@ -222,7 +225,16 @@ export function createHttpHandler(deps: HttpDeps) {
           case 'POST /api/ai':
             return await ai(req, res, ip);
           default: {
-            const known = ['/api/login', '/api/me', '/api/health', '/api/ai'].includes(pathname.replace(/\/+$/, ''));
+            const clean = pathname.replace(/\/+$/, '');
+            if (deps.solana?.handles(route)) {
+              const r = await deps.solana.handle(route, {
+                ip,
+                authorization: req.headers.authorization,
+                readBody: () => readJson(req),
+              });
+              return sendJson(res, r.status, r.body, r.headers);
+            }
+            const known = ['/api/login', '/api/me', '/api/health', '/api/ai', ...(deps.solana?.paths ?? [])].includes(clean);
             return sendJson(res, known ? 405 : 404, { error: known ? 'Method not allowed.' : 'Not found.' });
           }
         }

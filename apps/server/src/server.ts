@@ -9,6 +9,10 @@ import { clientIp, createHttpHandler } from './http';
 import { silentLogger, type Logger } from './log';
 import { MissionEngine } from './missions';
 import { Shop, type PaymentProvider } from './shop';
+import { SolanaPayments } from './solana/payments';
+import { createSolanaRoutes } from './solana/routes';
+import { DISABLED_PAYMENTS, type PaymentsConfig, type SolanaRpc } from './solana/types';
+import { WalletAuth } from './solana/wallet';
 import { systemClock, type Clock } from './util';
 
 export interface ServerOptions {
@@ -34,6 +38,11 @@ export interface ServerOptions {
   aiHardTimeoutMs?: number;
   /** payment seam for the shop; defaults to in-game coins */
   paymentProvider?: PaymentProvider;
+  /**
+   * Optional Solana Devnet payments (feature flag). Omitted or `config.enabled === false` = no wallet/pay endpoints at
+   * all (GET /api/config still answers `enabled: false`). `rpc` is injectable so tests can use a mock node.
+   */
+  payments?: { config: PaymentsConfig; rpc: SolanaRpc; sleep?: (ms: number) => Promise<void> };
 }
 
 export interface GameServer {
@@ -48,6 +57,8 @@ export interface GameServer {
   readonly accounts: Accounts;
   readonly missions: MissionEngine;
   readonly shop: Shop;
+  /** null unless Solana Devnet payments are enabled */
+  readonly payments: SolanaPayments | null;
   readonly wss: WebSocketServer;
 }
 
@@ -106,6 +117,23 @@ export function createServer(options: ServerOptions): GameServer {
     { clock, log, maxPlayers: options.maxPlayers, heartbeatMs: options.heartbeatMs, maxConnectionsPerIp: options.maxConnectionsPerIp },
   );
 
+  const payCfg = options.payments?.config ?? DISABLED_PAYMENTS;
+  const payments =
+    options.payments && payCfg.enabled
+      ? new SolanaPayments({
+          config: payCfg,
+          db,
+          shop,
+          rpc: options.payments.rpc,
+          clock,
+          log,
+          notify: (id, msg) => game.sendTo(id, msg),
+          sleep: options.payments.sleep,
+        })
+      : null;
+  const walletAuth = payments ? new WalletAuth({ db, accounts, clock, log }) : null;
+  const solana = createSolanaRoutes({ accounts, payments, wallet: walletAuth, clock, log });
+
   const trustProxy = options.trustProxy ?? false;
   const handler = createHttpHandler({
     db,
@@ -113,6 +141,7 @@ export function createServer(options: ServerOptions): GameServer {
     game,
     assistant,
     aiApiDeps: { db, game, missions, shop },
+    solana,
     clock,
     log,
     startedAt,
@@ -171,6 +200,7 @@ export function createServer(options: ServerOptions): GameServer {
     accounts,
     missions,
     shop,
+    payments,
     get port() {
       const a = httpServer.address() as AddressInfo | string | null;
       return a && typeof a === 'object' ? a.port : 0;

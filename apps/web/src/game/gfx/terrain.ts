@@ -46,6 +46,6 @@ export function outerHeight(x: number, z: number): number {
   const hills = roll * (1.5 + fbm2(x * 0.014 + 7.3, z * 0.014 - 3.1) * 15);
   const ridgeN = fbm2(x * 0.0075 + 31.7, z * 0.0075 + 11.9, 5);
   const ridge = 1 - Math.abs(ridgeN * 2 - 1);
-  const mt = smooth(190, 360, r) * (28 + ridge * ridge * 120 + fbm2(x * 0.02, z * 0.02) * 30);
+  const mt = smooth(230, 430, r) * (22 + ridge * ridge * 95 + fbm2(x * 0.02, z * 0.02) * 26);
   return hills + mt;
 }

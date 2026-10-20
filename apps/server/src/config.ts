@@ -1,6 +1,8 @@
 import path from 'node:path';
 import type { AssistantConfig } from './ai/contract';
 import type { LogLevel } from './log';
+import { parsePaymentsConfig } from './solana/config';
+import type { PaymentsConfig } from './solana/types';
 
 export interface ServerConfig {
   port: number;
@@ -9,6 +11,8 @@ export interface ServerConfig {
   trustProxy: boolean;
   logLevel: LogLevel;
   ai: AssistantConfig;
+  /** optional Solana Devnet payments (PAYMENTS_ENABLED=false by default). Throws PaymentsConfigError when enabled but unsafe. */
+  payments: PaymentsConfig;
 }
 
 function int(v: string | undefined, fallback: number, min = 0): number {
@@ -40,5 +44,6 @@ export function loadConfig(env: NodeJS.ProcessEnv, cwd: string, serverDir: strin
       ratePerMinute: int(env.AI_RATE_PER_MIN, 10, 1),
       baseUrl: env.AI_BASE_URL?.trim() || undefined,
     },
+    payments: parsePaymentsConfig(env),
   };
 }
