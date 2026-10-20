@@ -39,6 +39,7 @@ export const MISSION_LIMITS = {
   deadlineFloorMs: 5 * 60_000,
 } as const;
 
+// eslint-disable-next-line no-control-regex
 const stripText = (s: string) => s.replace(/[\u0000-\u001f\u007f<>`]/g, ' ').replace(/\s+/g, ' ').trim();
 
 /** The shape the AI (or rules engine) may propose. Everything is validated before use. */

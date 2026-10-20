@@ -35,7 +35,7 @@ export function normalizeAngle(a: number): number {
 export function sanitizeText(input: string, maxLen: number): string {
   let s = input.replace(/\s+/g, ' ');
   // eslint-disable-next-line no-control-regex
-  s = s.replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁠-⁯﻿￹-￻]/g, '');
+  s = s.replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff\ufff9-\ufffb]/g, '');
   s = s.replace(/ {2,}/g, ' ').trim();
   const chars = Array.from(s);
   if (chars.length > maxLen) s = chars.slice(0, maxLen).join('').trimEnd();

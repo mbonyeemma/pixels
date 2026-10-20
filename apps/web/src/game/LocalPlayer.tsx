@@ -46,9 +46,11 @@ const isTextTarget = (t: EventTarget | null): boolean => {
   const tag = el.tagName;
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
 };
+/** Game keys are ignored while typing or while a MODAL panel is open. The AI guide / inventory panels are docked and non-modal. */
+const isModal = (panel: string): boolean => panel === 'shop' || panel === 'help';
 const uiBlocked = (): boolean => {
   const s = useGame.getState();
-  return s.typing || s.panel !== 'none';
+  return s.typing || isModal(s.panel);
 };
 
 function readRuntimePose(): void {
@@ -73,6 +75,9 @@ function readRuntimePose(): void {
   localDriver.anim = 'idle';
   localDriver.speed = 0;
   camState.ready = false;
+  camState.dist = 7.5;
+  camState.pitch = 0.42;
+  camState.effDist = 7.5;
 }
 
 function cancelEmote(notifyServer: boolean): void {
@@ -174,6 +179,7 @@ export default function LocalPlayer() {
     const gs = useGame.getState();
     if (!gs.selfId) {
       pick.current = null;
+      if (gs.nearPrompt) useGame.setState({ nearPrompt: null });
       return;
     }
     if (ctl.initFor !== gs.selfId) {
@@ -181,7 +187,7 @@ export default function LocalPlayer() {
       readRuntimePose();
     }
     const now = performance.now() / 1000;
-    const blocked = gs.typing || gs.panel !== 'none';
+    const blocked = gs.typing || isModal(gs.panel);
     if (blocked && (ctl.keys.size || ctl.shift)) {
       ctl.keys.clear();
       ctl.shift = false;
@@ -354,7 +360,7 @@ export default function LocalPlayer() {
       ctl.pickT = 0;
       const p = pickInteractable(ctl.x, ctl.z, gs.mission);
       pick.current = p;
-      const prompt = p && gs.panel === 'none' ? p.prompt : null;
+      const prompt = p && !isModal(gs.panel) ? p.prompt : null;
       if (prompt !== gs.nearPrompt) useGame.setState({ nearPrompt: prompt });
     }
   }, -3);

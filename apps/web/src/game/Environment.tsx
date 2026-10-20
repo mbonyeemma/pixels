@@ -236,7 +236,7 @@ export default function Environment({ lamps }: { lamps: THREE.Vector3[] }) {
       nightMat.uniforms.uNight.value = Math.min(1, s.night * 1.15);
       nightMat.uniforms.uStars.value = s.starAlpha;
       nightMat.uniforms.uTime.value = state.clock.elapsedTime;
-      (nightMat.uniforms.uHorizon.value as THREE.Color).setRGB(s.fog[0], s.fog[1], s.fog[2], THREE.SRGBColorSpace);
+      (nightMat.uniforms.uHorizon.value as THREE.Color).setRGB(Math.min(1, s.fog[0] * 1.5 + 0.02), Math.min(1, s.fog[1] * 1.5 + 0.03), Math.min(1, s.fog[2] * 1.45 + 0.05), THREE.SRGBColorSpace);
       (nightMat.uniforms.uZenith.value as THREE.Color).setRGB(s.hemiSky[0] * 0.28, s.hemiSky[1] * 0.28, s.hemiSky[2] * 0.4, THREE.SRGBColorSpace);
       (nightMat.uniforms.uMoonDir.value as THREE.Vector3).set(s.moonDir[0], s.moonDir[1], s.moonDir[2]).normalize();
       d.visible = s.night > 0.01;

@@ -2,8 +2,12 @@
   "name": "pixels",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "description": "Pixels - a browser-based 3D multiplayer town with an AI guide",
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "dev": "concurrently -n server,web -c blue,green \"npm run dev -w @pixels/server\" \"npm run dev -w @pixels/web\"",
     "build": "npm run build -w @pixels/web && npm run build -w @pixels/server",
