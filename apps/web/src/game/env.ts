@@ -11,7 +11,7 @@ export const skyState = makeSkyState();
 export const envCtl: { forceT: number | null } = { forceT: null };
 
 /** Orbit camera state. yaw: camera azimuth (0 = camera on +z looking north), pitch: elevation above horizontal. */
-export const camState = { yaw: 0, pitch: 0.42, dist: 7.5, effDist: 7.5, x: 0, y: 0, z: 0, ready: false };
+export const camState = { yaw: 0, pitch: 0.42, dist: 7.5, effDist: 7.5, x: 0, y: 0, z: 0, cx: 0, cy: 0, cz: 0, ready: false };
 
 /** The local avatar's driver (position/anim), read by <Avatar/> and the camera. */
 export const localDriver = makeDriver();

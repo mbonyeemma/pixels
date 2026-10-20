@@ -7,6 +7,7 @@ import { runtime, useGame } from '../state';
 import { computeSkyState } from './logic/daynight';
 import { envCtl, skyState } from './env';
 import { useTextures } from './assets';
+import { createParticles } from './gfx/particles';
 
 const SHADOW_EXTENT = 46;
 
@@ -81,6 +82,38 @@ export default function Environment({ lamps }: { lamps: THREE.Vector3[] }) {
   const snap = useMemo(() => ({ right: new THREE.Vector3(), up: new THREE.Vector3(), t: new THREE.Vector3(), d: new THREE.Vector3() }), []);
   const col = useMemo(() => new THREE.Color(), []);
   const hi = quality === 'high';
+  const clouds = useMemo(() => {
+    const rnd = (n: number) => {
+      const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+      return x - Math.floor(x);
+    };
+    return createParticles({
+      count: 14 * 8,
+      map: tex.softCircle,
+      color: '#ffffff',
+      header: 'uniform vec3 uCam; uniform float uDay;',
+      uniforms: { uCam: { value: new THREE.Vector3() }, uDay: { value: 1 } },
+      seedFn: (i, s) => {
+        const c = Math.floor(i / 8);
+        const p = i % 8;
+        s[0] = (c + rnd(c + 1) * 0.6) / 14;
+        s[1] = rnd(c + 50);
+        s[2] = (p / 7 - 0.5) * 2 * (0.6 + rnd(c + 90) * 0.6) + (rnd(i + 7) - 0.5) * 0.25;
+        s[3] = rnd(i + 200);
+      },
+      motion: `
+        float az = seed.x * 6.2831 + t * 0.004;
+        float el = 0.1 + seed.y * 0.38;
+        vec3 dir = vec3(cos(az) * cos(el), sin(el), sin(az) * cos(el));
+        vec3 rightV = vec3(-sin(az), 0.0, cos(az));
+        float dome = 1.0 - seed.z * seed.z;
+        center = uCam + dir * 800.0 + rightV * seed.z * 150.0 + vec3(0.0, dome * 22.0 + (seed.w - 0.5) * 18.0, 0.0);
+        size = 90.0 + seed.w * 80.0 + dome * 40.0;
+        alpha = 0.5 * uDay * smoothstep(0.03, 0.16, el) * (0.55 + 0.45 * seed.w);
+      `,
+    });
+  }, [tex]);
+  useEffect(() => () => clouds.dispose(), [clouds]);
 
   useEffect(() => {
     if (sky.current) sky.current.renderOrder = -2;
@@ -185,6 +218,17 @@ export default function Environment({ lamps }: { lamps: THREE.Vector3[] }) {
       u.mieCoefficient.value = 0.004 + s.dusk * 0.004;
       sk.position.copy(cam.position);
     }
+    // ---- clouds drift around the camera, lit by the sun colour
+    {
+      const cu = clouds.material.uniforms;
+      (cu.uCam.value as THREE.Vector3).copy(cam.position);
+      cu.uDay.value = Math.min(1, s.day * 1.1);
+      (cu.uColor.value as THREE.Color).setRGB(
+        0.82 + 0.18 * s.sunColor[0] + 0.1 * s.dusk, 0.84 + 0.12 * s.sunColor[1] - 0.1 * s.dusk, 0.9 + 0.1 * s.sunColor[2] - 0.28 * s.dusk, THREE.SRGBColorSpace,
+      );
+      clouds.update(state.clock.elapsedTime, 0.45 + 0.55 * s.day);
+      clouds.mesh.visible = s.day > 0.02;
+    }
     // ---- night dome follows the camera
     const d = dome.current;
     if (d) {
@@ -232,6 +276,7 @@ export default function Environment({ lamps }: { lamps: THREE.Vector3[] }) {
       <mesh ref={dome} renderOrder={-1} frustumCulled={false} material={nightMat}>
         <sphereGeometry args={[1200, 32, 16]} />
       </mesh>
+      <primitive object={clouds.mesh} />
       {[0, 1, 2].map((i) => (
         <pointLight key={i} ref={(el) => { lampLights.current[i] = el; }} color="#ffb766" intensity={0} distance={16} decay={1.6} />
       ))}

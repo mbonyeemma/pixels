@@ -128,6 +128,9 @@ export default function CameraRig() {
     let cz = camState.z + _d.z * dist;
     cy = Math.max(cy, 0.35 + groundHeight(cx, cz));
     cam.position.set(cx, cy, cz);
+    camState.cx = cx;
+    camState.cy = cy;
+    camState.cz = cz;
     cam.lookAt(camState.x, ty - 0.12, camState.z);
     runtime.cameraYaw = camState.yaw;
     void clamp;

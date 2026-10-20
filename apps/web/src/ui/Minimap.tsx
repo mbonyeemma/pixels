@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { publicLocations, type GameLocation } from '@pixels/shared';
+import { publicLocations, WORLD_BOUNDS, type GameLocation } from '@pixels/shared';
 import { runtime, useGame } from '../state';
 import { gameClient } from '../net/client';
 import { KEYS, safeGet, safeSet } from '../net/storage';
-import { clampToCircle, getStaticLayer, PX_PER_M, viewToWorld, worldToView } from './minimapRender';
+import { clampToCircle, getStaticLayer, PX_PER_M, worldToView } from './minimapRender';
 import { nameColor } from './format';
 import { IconMinus, IconPlus } from './icons';
-import { WORLD_BOUNDS } from '@pixels/shared';
 
 /** CSS px; keep in sync with --mm-size in hud.css (smaller on short screens) */
 const sizeFor = (): number => (typeof window !== 'undefined' && window.matchMedia?.('(max-height: 779px)').matches ? 152 : 184);

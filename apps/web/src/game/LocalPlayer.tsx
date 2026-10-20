@@ -170,7 +170,7 @@ export default function LocalPlayer() {
   const steerOut = useMemo(() => makeSteerOut(), []);
 
   useFrame((_, delta) => {
-    const dt = Math.min(delta, 0.05);
+    const dt = Math.min(delta, 0.1);
     const gs = useGame.getState();
     if (!gs.selfId) {
       pick.current = null;
@@ -257,30 +257,32 @@ export default function LocalPlayer() {
     const moveIntent = manual && (dirX !== 0 || dirZ !== 0);
     if (moveIntent && ctl.emote) cancelEmote(false);
 
-    // ---- integrate
+    // ---- integrate (sub-stepped so slow frames never tunnel through thin colliders)
     const targetSpeed = moveIntent ? (wantRun ? RUN_SPEED : WALK_SPEED) : 0;
     const tvx = dirX * targetSpeed;
     const tvz = dirZ * targetSpeed;
-    const k = 1 - Math.exp(-dt * (targetSpeed > 0 ? 11 : 9));
-    ctl.vx += (tvx - ctl.vx) * k;
-    ctl.vz += (tvz - ctl.vz) * k;
-    if (targetSpeed === 0 && Math.hypot(ctl.vx, ctl.vz) < 0.05) ctl.vx = ctl.vz = 0;
-    const ox = ctl.x;
-    const oz = ctl.z;
-    let nx = ox + ctl.vx * dt;
-    let nz = oz + ctl.vz * dt;
-    if (ctl.corr) {
-      const ck = 1 - Math.exp(-dt * 12);
-      nx += (ctl.corr.x - nx) * ck;
-      nz += (ctl.corr.z - nz) * ck;
-      if (Math.hypot(ctl.corr.x - nx, ctl.corr.z - nz) < 0.03) ctl.corr = null;
-    }
-    const res = resolveCollisions(nx, nz, PLAYER_RADIUS, COLLIDERS);
-    ctl.x = res[0];
-    ctl.z = res[1];
-    if (dt > 0) {
-      const ax = (ctl.x - ox) / dt;
-      const az = (ctl.z - oz) / dt;
+    const steps = Math.max(1, Math.ceil(dt / 0.04));
+    const h = dt / steps;
+    for (let si = 0; si < steps; si++) {
+      const k = 1 - Math.exp(-h * (targetSpeed > 0 ? 11 : 9));
+      ctl.vx += (tvx - ctl.vx) * k;
+      ctl.vz += (tvz - ctl.vz) * k;
+      if (targetSpeed === 0 && Math.hypot(ctl.vx, ctl.vz) < 0.05) ctl.vx = ctl.vz = 0;
+      const ox = ctl.x;
+      const oz = ctl.z;
+      let nx = ox + ctl.vx * h;
+      let nz = oz + ctl.vz * h;
+      if (ctl.corr) {
+        const ck = 1 - Math.exp(-h * 12);
+        nx += (ctl.corr.x - nx) * ck;
+        nz += (ctl.corr.z - nz) * ck;
+        if (Math.hypot(ctl.corr.x - nx, ctl.corr.z - nz) < 0.03) ctl.corr = null;
+      }
+      const res = resolveCollisions(nx, nz, PLAYER_RADIUS, COLLIDERS);
+      ctl.x = res[0];
+      ctl.z = res[1];
+      const ax = (ctl.x - ox) / h;
+      const az = (ctl.z - oz) / h;
       // sliding: keep the component of velocity that survived collision resolution
       if (Math.hypot(ax, az) + 0.01 < Math.hypot(ctl.vx, ctl.vz)) {
         ctl.vx = ax;

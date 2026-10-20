@@ -34,15 +34,15 @@ function AiPanelInner() {
     if (consumeAiFocus()) inputRef.current?.focus({ preventScroll: true });
   }, []);
 
+  const lastFrom = lines[lines.length - 1]?.from;
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const last = lines[lines.length - 1];
     const nodes = el.querySelectorAll<HTMLElement>('.ai-msg--ai[data-line]');
     // a fresh guide reply is read from its first line; everything else sticks to the bottom
-    if (last?.from === 'ai' && !busy && nodes.length) el.scrollTop = Math.max(0, nodes[nodes.length - 1].offsetTop - 10);
+    if (lastFrom === 'ai' && !busy && nodes.length) el.scrollTop = Math.max(0, nodes[nodes.length - 1].offsetTop - 10);
     else el.scrollTop = el.scrollHeight;
-  }, [lines.length, busy]);
+  }, [lines.length, lastFrom, busy]);
 
   const send = (msg: string) => {
     const m = msg.trim();
@@ -87,8 +87,8 @@ function AiPanelInner() {
       <div className="ai-list" ref={listRef} role="log" aria-live="polite" aria-relevant="additions text" aria-busy={busy} aria-label="Conversation with the Town Guide">
         {empty ? (
           <div className="ai-msg ai-msg--ai">
-            <p>Hi! I&apos;m your Town Guide. Ask me where things are, what you can buy, who&apos;s around, or for something fun to do.</p>
-            <p className="fineprint">I can walk you places and suggest missions. I can never spend your coins without your Confirm.</p>
+            <p>Hi! I&apos;m your Town Guide. Ask me where things are, what to buy, who&apos;s around, or for something fun to do.</p>
+            <p className="fineprint">I can walk you places, but I never spend your coins without your Confirm.</p>
           </div>
         ) : null}
         {lines.map((l) => (

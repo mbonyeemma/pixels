@@ -9,8 +9,11 @@ import react from '@vitejs/plugin-react';
 const target = process.env.VITE_PROXY_TARGET ?? 'http://localhost:8787';
 const wsTarget = target.replace(/^http/, 'ws');
 
-/** Heavy 3D libraries only. Anything shared with the main app (react, zustand) stays out of this chunk. */
-const THREE_RE = /node_modules\/(three|@react-three|three-stdlib|three-mesh-bvh|troika-[^/]+|camera-controls|maath|meshline|stats-gl|detect-gpu|@monogrid|@mediapipe|@use-gesture|hls\.js|suspend-react|its-fine|react-use-measure|utility-types|draco3d|potpack|bidi-js|webgl-sdf-generator|tunnel-rat)\//;
+/** Heavy 3D libraries only. Anything shared with the main app (react, zustand, CJS helpers) goes to `vendor` instead. */
+const THREE_RE = /node_modules\/(three|@react-three|three-stdlib|three-mesh-bvh|troika-[^/]+|camera-controls|maath|meshline|stats-gl|detect-gpu|@monogrid|@mediapipe|@use-gesture|hls\.js|suspend-react|its-fine|react-reconciler|react-use-measure|utility-types|draco3d|potpack|bidi-js|webgl-sdf-generator|tunnel-rat)\//;
+
+/** Shared runtime used by the login screen too: must not live inside the lazy 3D chunk or the login page would preload it. */
+const VENDOR_RE = /node_modules\/(react|react-dom|scheduler|zustand|use-sync-external-store)\//;
 
 export default defineConfig({
   plugins: [react()],
@@ -39,6 +42,7 @@ export default defineConfig({
       },
       output: {
         manualChunks(id) {
+          if (VENDOR_RE.test(id) || id.includes('commonjsHelpers') || id.includes('vite/preload-helper') || id.includes('vite/modulepreload-polyfill')) return 'vendor';
           if (THREE_RE.test(id)) return 'three';
           return undefined;
         },

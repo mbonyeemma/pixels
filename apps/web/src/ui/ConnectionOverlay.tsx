@@ -1,18 +1,25 @@
 import { useGame } from '../state';
+import { useRef } from 'react';
 import { gameClient, reconnectNow } from '../net/client';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 
 /** Blocking card when the server has ended the session (kick) or all else failed. */
 export function DisconnectedOverlay() {
   const status = useGame((s) => s.status);
+  return status === 'disconnected' ? <DisconnectedDialog /> : null;
+}
+
+function DisconnectedDialog() {
   const detail = useGame((s) => s.statusDetail);
-  if (status !== 'disconnected') return null;
+  const ref = useRef<HTMLDivElement>(null);
+  useDialogFocus(ref);
   return (
     <div className="scrim" role="presentation">
-      <div className="dialog glass dialog--narrow" role="alertdialog" aria-modal="true" aria-labelledby="disc-title" aria-describedby="disc-desc">
+      <div ref={ref} className="dialog glass dialog--narrow" role="alertdialog" aria-modal="true" aria-labelledby="disc-title" aria-describedby="disc-desc" tabIndex={-1}>
         <h2 id="disc-title">You were disconnected</h2>
         <p id="disc-desc">{detail || 'The connection to the town was closed.'}</p>
         <div className="row">
-          <button type="button" className="btn btn--primary" autoFocus onClick={reconnectNow}>
+          <button type="button" className="btn btn--primary" data-autofocus onClick={reconnectNow}>
             Reconnect
           </button>
           <button type="button" className="btn" onClick={() => gameClient.logout()}>

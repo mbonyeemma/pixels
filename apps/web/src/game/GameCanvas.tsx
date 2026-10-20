@@ -11,7 +11,7 @@ declare global {
     __pixels?: {
       getPose: () => { x: number; z: number; ry: number; anim: string; speed: number };
       remotes: () => { id: string; name: string; x: number; z: number; ry: number; anim: string }[];
-      camera: () => { yaw: number; pitch: number; dist: number; eff: number; x: number; y: number; z: number };
+      camera: () => { yaw: number; pitch: number; dist: number; eff: number; x: number; y: number; z: number; cx: number; cy: number; cz: number };
       time: () => number;
       info: () => { calls: number; triangles: number; geometries: number; textures: number } | null;
     };
@@ -78,7 +78,7 @@ export default function GameCanvas() {
     window.__pixels = {
       getPose: () => ({ ...runtime.local }),
       remotes: () => [...runtime.remotes.values()].map((r) => ({ id: r.id, name: r.name, x: r.x, z: r.z, ry: r.ry, anim: r.anim })),
-      camera: () => ({ yaw: camState.yaw, pitch: camState.pitch, dist: camState.dist, eff: camState.effDist, x: camState.x, y: camState.y, z: camState.z }),
+      camera: () => ({ yaw: camState.yaw, pitch: camState.pitch, dist: camState.dist, eff: camState.effDist, x: camState.x, y: camState.y, z: camState.z, cx: camState.cx, cy: camState.cy, cz: camState.cz }),
       time: () => skyState.t,
       info: () => (glInfo ? { calls: glInfo.info.render.calls, triangles: glInfo.info.render.triangles, geometries: glInfo.info.memory.geometries, textures: glInfo.info.memory.textures } : null),
     };

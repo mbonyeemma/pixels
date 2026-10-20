@@ -15,6 +15,8 @@ export interface ParticleOptions {
   additive?: boolean;
   seedFn?: (i: number, out: [number, number, number, number]) => void;
   uniforms?: Record<string, THREE.IUniform>;
+  /** extra GLSL declarations for the vertex shader (uniforms used by `motion`) */
+  header?: string;
 }
 
 export interface ParticleSystem {
@@ -59,6 +61,8 @@ export function createParticles(o: ParticleOptions): ParticleSystem {
     vertexShader: /* glsl */ `
       attribute vec4 aSeed;
       uniform float uTime;
+      uniform float uLight;
+      ${o.header ?? ''}
       varying vec2 vUv;
       varying float vAlpha;
       void main() {

@@ -339,14 +339,14 @@ export function buildBuildings(ctx: WorldCtx): BuildingsResult {
 
     // ------------------------------------------------------ the sign
     const signSpec: Record<Building['kind'], { w: number; y: number; x: number }> = {
-      bakery: { w: Math.min(6.2, b.w - 2), y: L.gfH - 0.62, x: 0 },
-      shop: { w: Math.min(7.4, b.w - 2), y: L.gfH - 0.6, x: 0 },
-      cafe: { w: Math.min(6.2, b.w - 2), y: L.gfH - 0.62, x: 0 },
-      post: { w: Math.min(5.6, b.w - 1.4), y: L.gfH - 0.6, x: 0 },
-      arcade: { w: Math.min(7.2, b.w - 2), y: L.gfH - 0.6, x: 0 },
-      library: { w: 3.9, y: L.gfH - 0.55, x: 0 },
+      bakery: { w: 5.2, y: L.gfH - 0.62, x: 0 },
+      shop: { w: Math.min(7.4, b.w - 2), y: L.gfH - 0.45, x: 0 },
+      cafe: { w: 5.2, y: L.gfH - 0.62, x: 0 },
+      post: { w: Math.min(5.6, b.w - 1.4), y: L.gfH - 0.45, x: 0 },
+      arcade: { w: Math.min(7.2, b.w - 2), y: L.gfH - 0.45, x: 0 },
+      library: { w: 2.9, y: 3.38, x: 0 },
       hall: { w: 4.4, y: L.gfH - 0.55, x: 0 },
-      apartments: { w: Math.min(4.4, b.w - 1.4), y: L.gfH - 0.5, x: 0 },
+      apartments: { w: Math.min(3.4, b.w - 1.4), y: L.gfH + 0.3, x: 0 },
     };
     const ss = signSpec[b.kind];
     const sign = paintSign(b.name, b.kind);
@@ -368,8 +368,8 @@ export function buildBuildings(ctx: WorldCtx): BuildingsResult {
 
     // ----------------------------------------------- kind specific bits
     if (b.kind === 'bakery') {
-      addAwning(g, -3.6, 3.2, hd + 0.05, 3.6, 1.4, 0.45, '#c9453a', '#fbf1dc');
-      addAwning(g, 3.6, 3.2, hd + 0.05, 3.6, 1.4, 0.45, '#c9453a', '#fbf1dc');
+      addAwning(g, -4.5, 3.1, hd + 0.05, 3.2, 1.4, 0.45, '#c9453a', '#fbf1dc');
+      addAwning(g, 4.5, 3.1, hd + 0.05, 3.2, 1.4, 0.45, '#c9453a', '#fbf1dc');
       // sandwich board + bread crates outside
       det.boxB(0.7, 1.0, 0.06, -2.4, SIDEWALK_H, hd + 1.2, '#2e3b34', { rx: -0.12 });
       det.boxB(0.78, 0.04, 0.5, -2.4, SIDEWALK_H + 0.5, hd + 1.0, '#7a5a3a');
@@ -377,8 +377,8 @@ export function buildBuildings(ctx: WorldCtx): BuildingsResult {
       det.boxB(0.8, 0.45, 0.5, 2.6, SIDEWALK_H, hd + 0.8, '#9a6a3c');
       for (let i = 0; i < 5; i++) det.sphere(0.13, 6, 4, 2.3 + i * 0.16, SIDEWALK_H + 0.5, hd + 0.8, '#e0b070', { sy: 0.8, sx: 1.3 });
     } else if (b.kind === 'cafe') {
-      addAwning(g, -3.4, 3.1, hd + 0.05, 3.8, 1.5, 0.45, '#3e7a56', '#f6ecd8');
-      addAwning(g, 3.4, 3.1, hd + 0.05, 3.8, 1.5, 0.45, '#3e7a56', '#f6ecd8');
+      addAwning(g, -4.5, 3.05, hd + 0.05, 3.2, 1.5, 0.45, '#3e7a56', '#f6ecd8');
+      addAwning(g, 4.5, 3.05, hd + 0.05, 3.2, 1.5, 0.45, '#3e7a56', '#f6ecd8');
       // outdoor tables with parasols (inside the sidewalk zone, close to the wall)
       for (const tx of [-5.0, 5.0]) {
         const tz = hd + 1.35;
@@ -437,7 +437,6 @@ export function buildBuildings(ctx: WorldCtx): BuildingsResult {
       det.cylB(0.05, 0.06, 4.6, 8, hw - 1.0, b.h, hd - 0.7, '#cfd2d8');
       det.box(1.1, 0.7, 0.03, hw - 0.4, b.h + 4.0, hd - 0.7, '#c93a3a');
       det.box(0.5, 0.35, 0.03, hw - 0.7, b.h + 4.18, hd - 0.69, '#2f5db0');
-      addAwning(g, 0, 3.15, hd + 0.05, 2.6, 1.0, 0.35, '#c93a3a', '#fff');
     } else if (b.kind === 'library') {
       // portal: pilasters, lintel, pediment, steps (flush so the sidewalk stays clear)
       for (const sx of [-1, 1]) {
@@ -509,8 +508,6 @@ export function buildBuildings(ctx: WorldCtx): BuildingsResult {
         g.add(piv);
         clockHands.push({ hour: hourP, minute: minP });
       }
-    } else if (b.kind === 'apartments') {
-      addAwning(g, 0, 3.0, hd + 0.05, 2.8, 1.0, 0.3, '#5a6572', '#8a95a1');
     }
 
     // ----------------------------------------------------- detail mesh
