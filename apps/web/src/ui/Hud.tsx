@@ -14,6 +14,7 @@ import EmoteBar from './EmoteBar';
 import ShopModal from './ShopModal';
 import HelpModal from './HelpModal';
 import { DisconnectedOverlay, ReconnectBanner } from './ConnectionOverlay';
+import { WalletHostSlot } from '../wallet/slots';
 
 /** All DOM overlays. The container ignores the pointer; only the panels inside accept it. */
 export default function Hud() {
@@ -47,6 +48,7 @@ export default function Hud() {
       </div>
       <ShopModal />
       <HelpModal />
+      <WalletHostSlot />
       <DisconnectedOverlay />
     </div>
   );

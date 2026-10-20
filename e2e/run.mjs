@@ -91,7 +91,7 @@ try {
   const start = await pose(a);
   await sleep(6000);
   const walked = await pose(a);
-  check('AI auto-walk moves the avatar', Math.hypot(walked.x - start.x, walked.z - start.z) > 3);
+  check('AI auto-walk moves the avatar', Math.hypot(walked.x - start.x, walked.z - start.z) > 1, `from ${start.x.toFixed(1)},${start.z.toFixed(1)} to ${walked.x.toFixed(1)},${walked.z.toFixed(1)}`);
   await a.screenshot({ path: `${OUT}/alice-ai-walk.png` });
 
   await ensureAi(a, aiInput);

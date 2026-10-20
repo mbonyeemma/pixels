@@ -5,6 +5,7 @@ import { loadLastLogin, loadToken } from '../net/storage';
 import { validateLogin, isLoginValid } from '../net/validation';
 import { useTypingHandlers } from '../hooks/useTyping';
 import { IconCheck } from './icons';
+import { SignInWithWalletSlot, WalletHostSlot } from '../wallet/slots';
 
 export default function LoginScreen() {
   const loginError = useGame((s) => s.loginError);
@@ -142,10 +143,13 @@ export default function LoginScreen() {
             )}
           </button>
 
+          <SignInWithWalletSlot />
+
           <p className="login-note">No password needed in this preview – we only use your email as your account ID.</p>
           <p className="login-note login-note--dim">Coins and items are mock, in-game only: they have no real-world value.</p>
         </form>
       </div>
+      <WalletHostSlot />
     </main>
   );
 }

@@ -3,7 +3,6 @@ import {
   COLLIDERS, LOCATIONS, PLAYER_RADIUS, SPAWN, findPath, isBlocked, resolveCollisions, validateMissionProposal, walkDistance,
   BUILDINGS, PROPS, ClientMessageSchema, worldTimeOfDay, PICKUP_LOCATION_IDS, DROPOFF_LOCATION_IDS, locationById, SHOP_COUNTER, MISSION_LIMITS,
   ITEMS, shopItems, toShopItemView, hasLamportPrice, itemById, LAMPORTS_PER_SOL, DEVNET_LABEL, DEVNET_GENESIS_HASH,
-  WalletChallengeRequestSchema, WalletVerifyRequestSchema, PayIntentRequestSchema, PayConfirmRequestSchema,
 } from '../src';
 
 describe('world data', () => {
@@ -125,18 +124,5 @@ describe('devnet lamport prices (optional payments)', () => {
   it('labels and constants', () => {
     expect(DEVNET_LABEL).toBe('DEVNET TEST — no real value');
     expect(DEVNET_GENESIS_HASH).toMatch(/^[1-9A-HJ-NP-Za-km-z]{43,44}$/);
-  });
-
-  it('request schemas accept well-formed bodies and reject junk', () => {
-    const pk = '11111111111111111111111111111112';
-    expect(WalletChallengeRequestSchema.safeParse({ publicKey: pk }).success).toBe(true);
-    expect(WalletChallengeRequestSchema.safeParse({ publicKey: 'short' }).success).toBe(false);
-    expect(WalletChallengeRequestSchema.safeParse({}).success).toBe(false);
-    expect(WalletVerifyRequestSchema.safeParse({ publicKey: pk, signature: 'x'.repeat(88) }).success).toBe(true);
-    expect(WalletVerifyRequestSchema.safeParse({ publicKey: pk, signature: 'x'.repeat(10) }).success).toBe(false);
-    expect(PayIntentRequestSchema.safeParse({ itemId: 'genesis_pixel' }).success).toBe(true);
-    expect(PayIntentRequestSchema.safeParse({ itemId: '' }).success).toBe(false);
-    expect(PayConfirmRequestSchema.safeParse({ intentId: 'a'.repeat(16), signature: 'x'.repeat(88) }).success).toBe(true);
-    expect(PayConfirmRequestSchema.safeParse({ intentId: 'a', signature: 'x'.repeat(88) }).success).toBe(false);
   });
 });

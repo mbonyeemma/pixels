@@ -55,7 +55,3 @@ export const useWallet = create<WalletState>((set) => ({
   patch: (p) => set(p),
   setPay: (itemId, s) => set((st) => ({ pay: { ...st.pay, [itemId]: s } })),
 }));
-
-export function resetWalletState(): void {
-  useWallet.setState({ open: false, mode: 'manage', hint: null, connectedName: null, publicKey: null, busy: null, error: null, challenge: null, pay: {} });
-}

@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import bs58 from 'bs58';
@@ -6,9 +8,10 @@ import { DEVNET_GENESIS_HASH, itemById, type PayIntentView } from '@pixels/share
 import { loadConfig } from '../src/config';
 import { PaymentsConfigError, checkRpcUrl, parsePaymentsConfig } from '../src/solana/config';
 import { HttpSolanaRpc } from '../src/solana/rpc';
+import { PayConfirmRequestSchema, PayIntentRequestSchema, WalletChallengeRequestSchema, WalletVerifyRequestSchema } from '../src/solana/schemas';
 import { RpcError, type ParsedTransaction } from '../src/solana/types';
 import { BLOCK_TIME_SKEW_MS, verifyPaymentTransaction, type VerifyInput } from '../src/solana/verify';
-import { makeHarness } from './helpers';
+import { makeHarness, rmDir, tmpDir } from './helpers';
 import { bearer, linkOverHttp, makeWallet, mockPaymentTx, payConfig, post } from './solanaHelpers';
 
 const NOW = Date.UTC(2026, 0, 15, 12, 0, 0);
@@ -246,5 +249,45 @@ describe('db: payments ledger persistence and wallet index', () => {
     expect(h.srv.db.getIntent('i1')).toBeUndefined();
     expect(h.srv.db.getIntent('i2')).toBeDefined();
     await h.close();
+  });
+  it('a damaged payments section never costs players their accounts (and the file is backed up)', async () => {
+    const dir = tmpDir();
+    const h = makeHarness({ dataDir: dir });
+    const a = h.signup('alice', 'a@example.com').account;
+    await h.srv.db.flush();
+    const file = path.join(dir, 'db.json');
+    const data = JSON.parse(fs.readFileSync(file, 'utf8')) as { payments: unknown };
+    await h.close();
+    try {
+      for (const damaged of [{ intents: ['junk', 5], signatures: [{ nope: true }] }, 'garbage']) {
+        data.payments = damaged;
+        fs.writeFileSync(file, JSON.stringify(data));
+        const h2 = makeHarness({ dataDir: dir });
+        try {
+          expect(h2.srv.db.findByEmail('a@example.com')?.id).toBe(a.id);
+          expect(h2.srv.db.signatureCount).toBe(0);
+          expect(fs.readdirSync(dir).some((f) => f.includes('invalid-payments'))).toBe(true);
+        } finally {
+          await h2.close();
+        }
+      }
+    } finally {
+      rmDir(dir);
+    }
+  });
+});
+
+describe('request schemas', () => {
+  it('accept well-formed bodies and reject junk', () => {
+    const pk = '11111111111111111111111111111112';
+    expect(WalletChallengeRequestSchema.safeParse({ publicKey: pk }).success).toBe(true);
+    expect(WalletChallengeRequestSchema.safeParse({ publicKey: 'short' }).success).toBe(false);
+    expect(WalletChallengeRequestSchema.safeParse({}).success).toBe(false);
+    expect(WalletVerifyRequestSchema.safeParse({ publicKey: pk, signature: 'x'.repeat(88) }).success).toBe(true);
+    expect(WalletVerifyRequestSchema.safeParse({ publicKey: pk, signature: 'x'.repeat(10) }).success).toBe(false);
+    expect(PayIntentRequestSchema.safeParse({ itemId: 'genesis_pixel' }).success).toBe(true);
+    expect(PayIntentRequestSchema.safeParse({ itemId: '' }).success).toBe(false);
+    expect(PayConfirmRequestSchema.safeParse({ intentId: 'a'.repeat(16), signature: 'x'.repeat(88) }).success).toBe(true);
+    expect(PayConfirmRequestSchema.safeParse({ intentId: 'a', signature: 'x'.repeat(88) }).success).toBe(false);
   });
 });

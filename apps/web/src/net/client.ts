@@ -327,6 +327,18 @@ async function login(username: string, email: string): Promise<void> {
   }
 }
 
+/**
+ * Start a session from an already-issued token (used by "Sign in with wallet", which gets its token from
+ * /api/wallet/verify instead of /api/login).
+ */
+export function adoptLogin(token: string, account: LoginResponse['account']): void {
+  saveToken(token);
+  saveLastLogin({ username: account.username, email: account.email });
+  attempt = 0;
+  useGame.setState({ token, account, loading: false, loginError: null });
+  connect('connecting');
+}
+
 function resume(): Promise<boolean> {
   if (resumeInFlight) return resumeInFlight;
   const token = loadToken();

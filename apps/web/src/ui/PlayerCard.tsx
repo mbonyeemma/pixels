@@ -2,6 +2,7 @@ import { useGame } from '../state';
 import { IconCoin } from './icons';
 import { splitDisplayName } from './format';
 import ConnectionChip from './ConnectionChip';
+import { WalletChipSlot } from '../wallet/slots';
 
 export default function PlayerCard() {
   const account = useGame((s) => s.account);
@@ -26,6 +27,7 @@ export default function PlayerCard() {
             </span>
             <span className="coins-unit">coins</span>
           </div>
+          <WalletChipSlot />
         </div>
         <div className="online" title="Players in town">
           <span className="online-n">{online}</span>

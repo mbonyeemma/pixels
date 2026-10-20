@@ -161,7 +161,7 @@ const AccountSchema = z.object({
   wallet: z.string().nullable().default(null),
 });
 
-const FileSchema = z.object({ version: z.number().optional(), accounts: z.array(z.unknown()), payments: PaymentsFileSchema.optional() });
+const FileSchema = z.object({ version: z.number().optional(), accounts: z.array(z.unknown()), payments: z.unknown().optional() });
 
 function normalizeAccount(raw: z.infer<typeof AccountSchema>): AccountRecord {
   const equipped: Equipped = {};
@@ -264,13 +264,24 @@ export class Database {
       this.log.warn('db: dropped invalid accounts while loading', { dropped });
       this.backupCorrupt('invalid-accounts');
     }
-    for (const rawIntent of top.data.payments?.intents ?? []) {
+    // the payments section is parsed leniently: a damaged section must never cost players their accounts
+    // (the damaged file is backed up, like invalid accounts, so the replay ledger can be recovered by hand)
+    const payments = PaymentsFileSchema.safeParse(top.data.payments ?? {});
+    const paymentsData = payments.success ? payments.data : { intents: [], signatures: [] };
+    let droppedPayments = payments.success ? 0 : 1;
+    for (const rawIntent of paymentsData.intents) {
       const r = IntentSchema.safeParse(rawIntent);
       if (r.success && this.accounts.has(r.data.accountId)) this.intents.set(r.data.id, r.data);
+      else droppedPayments++;
     }
-    for (const rawSig of top.data.payments?.signatures ?? []) {
+    for (const rawSig of paymentsData.signatures) {
       const r = UsedSignatureSchema.safeParse(rawSig);
       if (r.success) this.usedSignatures.set(r.data.signature, r.data);
+      else droppedPayments++;
+    }
+    if (droppedPayments > 0) {
+      this.log.warn('db: dropped unreadable payment records while loading', { dropped: droppedPayments });
+      this.backupCorrupt('invalid-payments');
     }
     this.log.info('db: loaded', { accounts: this.accounts.size, intents: this.intents.size, signatures: this.usedSignatures.size });
   }

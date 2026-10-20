@@ -9,6 +9,9 @@ import { closePanel } from './focus';
 import { IconClose, IconCoin } from './icons';
 import { KIND_LABEL, SLOT_LABEL } from './format';
 import ItemArt from './ItemArt';
+import { PayButtonSlot, ShopResumeSlot } from '../wallet/slots';
+import { usePaymentsEnabled } from '../wallet/config';
+import { DEVNET_FAUCET_URL } from '../wallet/format';
 
 export default function ShopModal() {
   const open = useGame((s) => s.panel === 'shop');
@@ -25,6 +28,7 @@ function ShopDialog() {
   const invKey = JSON.stringify(account?.inventory ?? {});
   const lastToast = useGame((s) => s.toasts.at(-1)?.id);
   useTick(400);
+  const solana = usePaymentsEnabled();
   const far = isFarFromShop(runtime.local.x, runtime.local.z);
   const meters = Math.round(distanceToShopCounter(runtime.local.x, runtime.local.z));
 
@@ -89,8 +93,18 @@ function ShopDialog() {
           ))}
         </ul>
 
+        <ShopResumeSlot />
         <footer className="dialog-foot">
           Mock economy: coins and items are in-game only, have no real-world value, and nothing here is recorded on a blockchain.
+          {solana ? (
+            <span className="shop-devnet-note">
+              <strong>DEVNET TEST — no real value.</strong> The optional &quot;Pay … SOL&quot; buttons use free Solana Devnet test SOL, approved in your own wallet. Need some?{' '}
+              <a href={DEVNET_FAUCET_URL} target="_blank" rel="noreferrer noopener">
+                faucet.solana.com
+              </a>
+              .
+            </span>
+          ) : null}
         </footer>
       </div>
     </div>
@@ -151,6 +165,7 @@ function ShopCard({ item, coins, far, pending, onBuy }: { item: ShopItem; coins:
           )}
         </div>
         {reason ? <div className="shop-reason">{reason}</div> : null}
+        <PayButtonSlot item={item} disabled={owned > 0 && !repeatable} />
       </div>
     </li>
   );

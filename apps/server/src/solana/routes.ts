@@ -1,17 +1,10 @@
-import {
-  DEVNET_LABEL,
-  PayConfirmRequestSchema,
-  PayIntentRequestSchema,
-  WalletChallengeRequestSchema,
-  WalletVerifyRequestSchema,
-  type PaymentConfigView,
-  type WalletVerifyResponse,
-} from '@pixels/shared';
+import { DEVNET_LABEL, type PaymentConfigView, type WalletVerifyResponse } from '@pixels/shared';
 import type { Accounts } from '../accounts';
 import type { Logger } from '../log';
 import { KeyedLimiter } from '../rateLimit';
 import type { Clock } from '../util';
 import type { SolanaPayments } from './payments';
+import { PayConfirmRequestSchema, PayIntentRequestSchema, WalletChallengeRequestSchema, WalletVerifyRequestSchema } from './schemas';
 import type { WalletAuth } from './wallet';
 
 export interface RouteContext {

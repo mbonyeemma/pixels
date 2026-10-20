@@ -82,20 +82,6 @@ export interface PayConfirmResponse {
   signature: string;
 }
 
-export const WalletChallengeRequestSchema = z.object({ publicKey: z.string().min(32).max(44) });
-export const WalletVerifyRequestSchema = z.object({
-  publicKey: z.string().min(32).max(44),
-  /** base58 ed25519 signature (64 bytes) */
-  signature: z.string().min(64).max(100),
-  /** optional: the nonce from the challenge (lets the server pick the exact challenge) */
-  nonce: z.string().min(8).max(64).optional(),
-});
-export const PayIntentRequestSchema = z.object({ itemId: z.string().min(1).max(40) });
-export const PayConfirmRequestSchema = z.object({
-  intentId: z.string().min(8).max(64),
-  signature: z.string().min(64).max(100),
-});
-
 export const AiRequestSchema = z.object({
   message: z.string().trim().min(1).max(AI_MESSAGE_MAX_LENGTH),
 });

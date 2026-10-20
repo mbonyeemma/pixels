@@ -62,6 +62,7 @@ npm run typecheck
 npm run lint
 npm run build
 npm run e2e      # needs `npm run build` first; two headless browsers against the real server
+node e2e/payments.mjs   # Solana Devnet payment flow with a fake wallet and mock RPC
 ```
 
 ## Architecture

@@ -130,12 +130,13 @@ export async function bootPayments(opts: Partial<ServerOptions> = {}, cfg: Parti
   const rpc = new MockSolanaRpc();
   const treasury = makeWallet();
   const slept: number[] = [];
-  let h!: Harness;
+  const ref: { h?: Harness } = {};
   const sleep = async (ms: number) => {
     slept.push(ms);
-    h.clock.advance(ms);
+    ref.h!.clock.advance(ms);
   };
-  h = makeHarness({ payments: { config: payConfig(treasury.publicKey, cfg), rpc, sleep }, ...opts });
+  const h = makeHarness({ payments: { config: payConfig(treasury.publicKey, cfg), rpc, sleep }, ...opts });
+  ref.h = h;
   const port = await h.srv.start(0, '127.0.0.1');
   return { h, rpc, treasury, base: `http://127.0.0.1:${port}`, slept, close: () => h.close() };
 }
